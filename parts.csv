@@ -1,0 +1,14 @@
+name,description,top_symbol,side_symbol,reorder_url
+M5x40,SHCS,cap,socket,https://www.mcmaster.com/91292A194/
+M3x20,BHTS,torx,button,M3x20
+"#8 1.5""",Wood Screw,flat,wood_screw,#8x1.5
+1/4-20,Hex nut,nut_standard,nut_standard,1/4-20
+M3,Acorn Nut,nut_cap,nut_cap,M3
+M3,Wing Nut,wing,wing,M3
+M5,Washer,washer,washer,https://www.mcmaster.com/93475A240/
+M5,7.8x6.8,insert_heat,insert_heat,https://www.mcmaster.com/94180A361/
+M3,Star Lock,star,star,star
+M3,Lock Washer,star_inner,star_inner,star_i
+M3,Split,split,split,split
+M3,Nyloc,nyloc,nyloc,nyloc
+M3,Flange Nut,nut_flange,nut_flange,nut_flange

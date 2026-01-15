@@ -1,0 +1,711 @@
+"""
+Shape generator functions for creating procedural icons.
+Each function generates SVG content for various fastener components.
+Shapes are assumed to fit within a 100x100 viewbox unless otherwise specified.
+"""
+
+from importlib.resources import path
+import math
+
+
+## Generic shape components ##
+
+
+def polygon_points(
+    n: int, flat_to_flat: float, cx: float = 50, cy: float = 50, rotation_deg: float | None = None
+) -> str:
+    """Return a string of x,y points for an n-sided regular polygon sized by flat-to-flat distance.
+
+    flat_to_flat is the distance between opposite parallel sides (apothem*2).
+    cx, cy specify the center point of the polygon.
+    rotation_deg specifies the rotation of the polygon in degrees. If None, defaults to -180/n to have a flat side at the top.
+    """
+    if rotation_deg is None:
+        rotation_deg = -180.0 / n
+    # circumradius R from flat-to-flat (2 * apothem = flat_to_flat), apothem = R * cos(pi/n)
+    R = flat_to_flat / (2 * math.cos(math.pi / n))
+    pts = []
+    for i in range(n):
+        angle_deg = rotation_deg + i * (360.0 / n)
+        a = math.radians(angle_deg)
+        x = cx + R * math.cos(a)
+        y = cy + R * math.sin(a)
+        pts.append(f"{x:.2f},{y:.2f}")
+    return 'points="' + " ".join(pts) + '"'
+
+
+def star(lobes: int, outer_radius: float, inner_radius: float) -> str:
+    """Generate SVG path points for a star shape with given number of lobes and radii."""
+    path = 'd="M '
+    for i in range(lobes * 2):
+        r = outer_radius if i % 2 == 0 else inner_radius
+        angle_deg = i * (360.0 / (lobes * 2)) - 90  # start pointing up
+        a = math.radians(angle_deg)
+        x = 50 + r * math.cos(a)
+        y = 50 + r * math.sin(a)
+        path += f"{x:.2f} {y:.2f} "
+        if i == 0:
+            path += "L "
+    path += ' Z"'
+    return path
+
+
+def annulus(outer_radius: float, inner_radius: float) -> str:
+    """Generic annulus shape
+    a ring with given outer and inner radii.
+    """
+    return f"""
+    <circle cx="50" cy="50" r="{outer_radius}" fill="#000000" />
+    <circle cx="50" cy="50" r="{inner_radius}" fill="#FFFFFF" />
+    """
+
+
+def cap_side(head_width: float, head_height: float) -> str:
+    """Generic cap head side view
+    a rounded rectangle, wider than it is tall
+    """
+    head = f"""
+    <rect x="{(100 - head_width) / 2}" y="{100 - head_height - 80}" width="{head_width}" height="{head_height}" rx="{head_height/4}" ry="{head_height/4}" fill="#000000" />
+    """
+    return head
+
+
+def button_side(head_diameter: float, head_height: float) -> str:
+    """Generic button head side view
+    a semi-ellipse on top of a rectangle.
+    """
+    head = f"""
+    <ellipse cx="50" cy="{100 - head_height - 80 + head_height/2}" rx="{head_diameter/2}" ry="{head_height/2}" fill="#000000" />
+    <rect x="{(100 - head_diameter) / 2}" y="{100 - head_height - 80 + head_height/2}" width="{head_diameter}" height="{head_height/2}" fill="#000000" />
+    """
+    return head
+
+
+def countersunk_side(head_diameter: float, head_height: float) -> str:
+    """Generic countersunk head side view
+    a trapezoid centered in the field, smaller at the bottom.
+    """
+    head = f"""
+    <path d="M {(100 - head_diameter) / 2} {100 - head_height - 80} L {(100 + head_diameter) / 2} {100 - head_height - 80} L {60} {100 - 80} L {40} {100 - 80} Z" fill="#000000" />
+    """
+    return head
+
+
+def bolt_shaft(shaft_width: float, shaft_length: float, pointed=False) -> str:
+    """Generic bolt shaft side view.
+    A vertical rectangle (shaft) with diagonal lines to indicate threading.
+    """
+    origin_x = (100 - shaft_width) / 2
+    origin_y = 100 - shaft_length
+    shaft_length = shaft_length - (shaft_width if pointed else 0)
+    shaft = f'<rect x="{origin_x}" y="{origin_y}" width="{shaft_width}" height="{shaft_length}" fill="#000000" />'
+
+    # Add threading lines
+    num_threads = 5
+    for i in range(num_threads):
+        y = origin_y + (i + 1) * (shaft_length / (num_threads + 1))
+        shaft += f'<line x1="{origin_x}" y1="{y}" x2="{(100 + shaft_width) / 2}" y2="{y - shaft_width/4}" stroke="#FFFFFF" stroke-width="2"/>'
+
+    # Add pointed tip if needed
+    if pointed:
+        # a tringle aligned with the bottom of the shaft rectangle, poining downwards
+        point = f'<path d="M {origin_x} {origin_y + shaft_length} L {50} {100} L {origin_x + shaft_width} {origin_y + shaft_length} Z" fill="#000000" />'
+        shaft += point
+
+    return shaft
+
+
+def nut_hex_top(flat_to_flat: float, color="#000000") -> str:
+    """Hex nut, top view
+    A hexagon with a circular hole in the center
+    """
+    # compute polygon points using helper
+    points_str = polygon_points(6, flat_to_flat, rotation_deg=30)
+    hole_radius = flat_to_flat / 4
+    return f"""
+    <polygon {points_str} fill="{color}" />
+    <circle cx="50" cy="50" r="{hole_radius}" fill="#FFFFFF" />
+    """
+
+
+def nut_hex_side(thickness: float, flat_to_flat: float, color="#000000") -> str:
+    """Hex nut, side view
+    A vertical rectangle with two horizontal lines representing the hex shape.
+    """
+    return f"""
+    <rect x="{(100 - thickness) / 2}" y="{(100 - flat_to_flat) / 2}" width="{thickness}" height="{flat_to_flat}" fill="{color}" />
+    <line x1="{(100 - thickness) / 2 - (flat_to_flat/4)}" y1="{(100 - flat_to_flat) / 2 + flat_to_flat * 0.25}" x2="{(100 + thickness) / 2 + (flat_to_flat/4)}" y2="{(100 - flat_to_flat) / 2 + flat_to_flat * 0.25}" stroke="#FFFFFF" stroke-width="2"/>
+    <line x1="{(100 - thickness) / 2 - (flat_to_flat/4)}" y1="{(100 - flat_to_flat) / 2 + flat_to_flat * 0.75}" x2="{(100 + thickness) / 2 + (flat_to_flat/4)}" y2="{(100 - flat_to_flat) / 2 + flat_to_flat * 0.75}" stroke="#FFFFFF" stroke-width="2"/>
+    """
+
+
+## Screws ##
+
+
+def button_head_side() -> str:
+    """Button head cap screw, side view.
+    A vertical rectangle (shaft) with a flattened semi-circle on top, flat side down (head).
+    """
+    head_width = 50
+    head_height = 20
+    shaft_width = 25
+    shaft_length = 80
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {button_side(head_width, head_height)}
+        {bolt_shaft(shaft_width, shaft_length)}
+    </svg>
+    """
+
+
+def cap_head_side() -> str:
+    """Socket head cap screw, side view.
+    A vertical rectangle (shaft) with a rounded rectangle on top (head).
+    """
+    head_width = 50
+    head_height = 30
+    shaft_width = 25
+    shaft_length = 80
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {cap_side(head_width, head_height)}
+        {bolt_shaft(shaft_width, shaft_length)}
+    </svg>
+    """
+
+
+def hex_head_side() -> str:
+    """Hex head screw, side view.
+    A vertical rectangle (shaft) with a hexagonal prism on top (head).
+    """
+    head_flat_to_flat = 50
+    head_height = 30
+    shaft_width = 25
+    shaft_length = 80
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {cap_side(head_flat_to_flat, head_height)}
+        {bolt_shaft(shaft_width, shaft_length)}
+    </svg>
+    """
+
+
+def flat_head_side() -> str:
+    """Flat head screw, side view.
+    A vertical rectangle (shaft) with a countersunk triangle on top (head).
+    """
+    head_diameter = 50
+    head_height = 20
+    shaft_width = 25
+    shaft_length = 80
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {countersunk_side(head_diameter, head_height)}
+        {bolt_shaft(shaft_width, shaft_length)}
+    </svg>
+    """
+
+
+def wood_screw_side() -> str:
+    """Wood screw, side view.
+    A vertical rectangle (shaft) with a pointed tip and a countersunk head on top.
+    """
+    head_diameter = 40
+    head_height = 20
+    shaft_width = 20
+    shaft_length = 80
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {countersunk_side(head_diameter, head_height)}
+        {bolt_shaft(shaft_width, shaft_length, pointed=True)}
+    </svg>
+    """
+
+
+## Washers ##
+
+
+def washer_std_side(outer_diameter: float = 80, inner_diameter: float = 25) -> str:
+    """Flat washer, side view (vertical orientation).
+    A thin rectangle with a hole in the center.
+    """
+    thickness = outer_diameter / 6
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <rect x="{(100 - thickness) / 2}" y="{(100 - outer_diameter) / 2}" width="{thickness}" height="{outer_diameter}" fill="#000000" />
+        <rect x="{(100 - thickness) / 2}" y="{(100 - inner_diameter) / 2}" width="{thickness}" height="{inner_diameter}" fill="#FFFFFF" />
+    </svg>
+    """
+
+
+def washer_std_top(outer_diameter: float = 80, inner_diameter: float = 25) -> str:
+    """Flat washer, top view.
+    A ring (circle with a hole in the center).
+    """
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {annulus(outer_diameter/2.0, inner_diameter/2.0)}
+    </svg>
+    """
+
+
+def washer_fender_side(diameter: float = 80) -> str:
+    """Fender washer, side view (vertical orientation).
+    A thin rectangle with a small hole in the center.
+    """
+    return washer_std_side(diameter, diameter / 3.0)
+
+
+def washer_fender_top(diameter: float = 80) -> str:
+    """Fender washer, top view.
+    A ring with large OD and small ID.
+    """
+    return washer_std_top(diameter, diameter / 3.0)
+
+
+def washer_split_side(diameter: float = 80) -> str:
+    """Split lock washer, side view.
+    A thin helix-like shape, with a white line diagonally across the middle to indicate the split.
+    """
+    outer_diameter = diameter
+    inner_diameter = diameter / 2
+    thickness = diameter / 10
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <path d="M {(100-thickness)/2} {(100-outer_diameter)/2+5} Q {(100-thickness)/2-5} {50-5} {(100-thickness)/2} {50} Q {(100-thickness)/2+5} {50+5} {(100-thickness)/2} {(100+outer_diameter)/2-5}"
+              stroke="#000000" stroke-width="{thickness}" fill="none"/>
+        <line x2="{(100-thickness)/2 - 10}" y1="{(100-inner_diameter)/2}" x1="{(100+thickness)/2 + 10}" y2="{(100+inner_diameter)/2}" stroke="#FFFFFF" stroke-width="4"/>
+    </svg>
+    """
+
+
+def washer_split_top(diameter: float = 80) -> str:
+    """Split lock washer, top view.
+    An annular ring with a gap on one side to indicate the split.
+    """
+    outer_radius = diameter / 2
+    inner_radius = outer_radius / 2
+    gap_angle = 20  # degrees
+    gap_width = diameter / 10
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {annulus(outer_radius, inner_radius)}
+        <rect x="{50}" y="{50-gap_width/2}" width="{50}" height="{gap_width}" transform="rotate({-gap_angle} 50 50)" fill="#FFFFFF" />
+    </svg>
+    """
+
+
+def washer_star_inner_side(diameter: float = 80) -> str:
+    """Internal star washer, side view.
+    Similar to standard washer with teeth indication.
+    """
+    return washer_std_side(diameter, diameter / 2)
+
+
+def washer_star_inner_top(diameter: float = 80) -> str:
+    """Internal star washer, top view.
+    A ring with internal teeth.
+    """
+    outer_radius = diameter * 0.5
+    inner_radius = outer_radius * 0.5
+    teeth = star(12, outer_radius * 0.8, inner_radius)
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {annulus(outer_radius, inner_radius)}
+        <path {teeth} fill="#FFFFFF"/>
+    </svg>
+    """
+
+
+def washer_star_outer_side(diameter: float = 80) -> str:
+    """External star washer, side view.
+    Similar to standard washer with outer teeth indication.
+    """
+    return washer_std_side(diameter, diameter / 2)
+
+
+def washer_star_outer_top(diameter: float = 80) -> str:
+    """External star washer, top view.
+    A ring with external teeth.
+    """
+    outer_radius = diameter * 0.5
+    inner_radius = outer_radius * 0.6
+    teeth = star(12, diameter * 0.7, diameter * 0.4)
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <path {teeth} fill="#000000"/>
+        {annulus(outer_radius, inner_radius)}
+    </svg>
+    """
+
+
+## Nut generators ##
+
+
+def nut_standard_top(diameter: float = 80) -> str:
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {nut_hex_top(diameter)}
+    </svg>
+    """
+
+
+def nut_standard_side(diameter: float = 80) -> str:
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {nut_hex_side(30, diameter)}
+    </svg>
+    """
+
+
+def nut_thin_top(diameter: float = 80) -> str:
+    # Thinner nut (smaller across-flats)
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {nut_hex_top(diameter * 2 * math.sqrt(3) / 2 * 0.75)}
+    </svg>
+    """
+
+
+def nut_thin_side(diameter: float = 80) -> str:
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {nut_hex_side(15, diameter)}
+    </svg>
+    """
+
+
+def nut_lock_top(diameter: float = 80) -> str:
+    # Nyloc style: hex with a filled smaller ring (representing nylon insert)
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {nut_hex_top(diameter)}
+        <circle cx="50" cy="50" r="{diameter * 0.2}" fill="#FFFFFF" />
+    </svg>
+    """
+
+
+def nut_lock_side(diameter: float = 80) -> str:
+    # Side view with a thin band on the top to indicate nylon insert
+    thickness = 30
+    radius = diameter * 0.5
+    return f"""
+    <svg width="100" height="100" viewBox="5 0 100 100">
+        {nut_hex_side(thickness, diameter)}
+        <rect x="{50}" y="{50-radius+diameter*0.1}" width="{thickness}" height="{diameter*0.8}" fill="#000000" />
+    </svg>
+    """
+
+
+def nut_flange_top(diameter: float = 80) -> str:
+    # Flange nut: hex centered on a larger disk (simple rendering)
+    # Draw a dark flange disk with a black hexagon and central hole
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{diameter*0.6}" fill="#000000" />
+        {nut_hex_top(diameter*0.9, color="#FFFFFF")}
+        {nut_hex_top(diameter*0.8, color="#000000")}
+    </svg>
+    """
+
+
+def nut_flange_side(diameter: float = 80) -> str:
+    # Side view with a flange plate at the base
+    thickness = 30
+    flange_diameter = diameter * 1.2
+    flange_thickness = thickness * 0.4
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {nut_hex_side(thickness, diameter)}
+        <rect x="{(100-thickness)/2}" y="{(100-flange_diameter)/2}" width="{flange_thickness}" height="{flange_diameter}" fill="#000000" />
+    </svg>
+    """
+
+
+def nut_cap_top(diameter: float = 80) -> str:
+    # Cap (acorn) nut: circular dome on top of hex
+    pts = polygon_points(6, diameter * 0.5)
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {nut_hex_top(diameter)}
+        <circle cx="50" cy="50" r="{diameter * 0.20}" fill="#000000" />
+    </svg>
+    """
+
+
+def nut_cap_side(diameter: float = 80) -> str:
+    # Dome on the side of hex profile
+    thickness = 20
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <!--dome-->
+        <ellipse cx="50" cy="50" rx="{diameter * 0.35}" ry="{diameter * 0.35}" fill="#000000" />
+        <!--white rectangle to cut off the left side of the dome-->
+        <rect x="0" y="0" height="100" width="50" fill="#FFFFFF" />
+
+        <!--hex body-->
+        <rect x="{(100) / 2 - thickness}" y="{(100 - diameter) / 2}" width="{thickness}" height="{diameter}" fill="#000000" />
+    </svg>
+    """
+
+
+def nut_wing_top(diameter: float = 80) -> str:
+    """Wing nut top
+    Annular ring with a top and bottom rectangle representing the wings
+    """
+    wing_width = diameter * 0.25
+    wing_height = diameter * 0.5
+    wing_offset = 0
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {annulus(diameter*0.4, diameter*0.2)}
+        <rect x="{(100 - wing_width) / 2}" y="{wing_offset}" width="{wing_width}" height="{wing_height}" fill="#000000" />
+        <rect x="{(100 - wing_width) / 2}" y="{100 - wing_height - wing_offset}" width="{wing_width}" height="{wing_height}" fill="#000000" />
+    </svg>
+    """
+
+
+def nut_wing_side(diameter: float = 80) -> str:
+    """wing nut side
+    a vertical rectangle representing the base, with two polygons for the wings
+    """
+    wing_width = diameter * 0.6
+    wing_height = diameter * 0.2
+    inner_diameter = diameter * 0.6
+    base_y = (100 - inner_diameter) / 2
+    wing_angle = 60  # degrees
+
+    return f"""
+    <svg width="100" height="100" viewBox="5 0 100 100">
+        <!-- Left wing -->
+        <rect x="{50}" y="{base_y+wing_height}" width="{wing_width}" height="{wing_height}" transform="rotate({-wing_angle} {50} {50})" fill="#000000" />
+        <!-- Right wing -->
+        <rect x="{50}" y="{base_y+wing_height}" width="{wing_width}" height="{wing_height}" transform="rotate({wing_angle} {50} {50})" fill="#000000" />
+        <!-- Base nut body -->
+        {nut_hex_side(30, inner_diameter)}
+    </svg>
+    """
+
+
+## Insert (threaded/heat/press) generators ##
+
+
+def insert_heat_top(diameter: float = 80) -> str:
+    # heat-set insert top - 20 pointed star, with a hole in the center
+    points_str = star(20, diameter * 0.6, diameter * 0.5)
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <path {points_str} fill="#000000" />
+        <circle cx="50" cy="50" r="{diameter * 0.2}" fill="#FFFFFF" />
+    </svg>
+    """
+
+
+def insert_heat_side(diameter: float = 80, length: float = 60) -> str:
+    """heat-set insert side - stack of 4 rectangles with hatch lines to indicate knurling.
+    1) full witdth, diagonal hatch, 1/3 overall height
+    2) slightly narrower, no hatch, 1/6 overall height
+    3) full width, diagonal hatch the opposite of 1, 1/3 overall height
+    4) narrower, no hatch, 1/6 overall height
+
+    The hatch lines are represented by white diagonal lines over the black base rectangles.
+    The knurling angle is typically around 60 degrees.
+    The knurl lines should be spaced evenly across the width of the wide insert sections (1 & 3).
+    """
+
+    wide_height = length / 3.0
+    wide_width = diameter * 0.5
+    narrow_height = length / 6.0
+    narrow_width = diameter * 0.4
+    top = max(100 - length * 1.3, 0)
+    left = 5
+    rects = [
+        f'<rect x="{left + (100-wide_width)/2}"   y="{top}"               width="{wide_width}"   height="{wide_height}" fill="#000000" />',
+        f'<rect x="{left + (100-narrow_width)/2}" y="{top + wide_height}" width="{narrow_width}" height="{narrow_height}" fill="#000000" />',
+        f'<rect x="{left + (100-wide_width)/2}"   y="{top + wide_height + narrow_height}" width="{wide_width}" height="{wide_height}" fill="#000000" />',
+        f'<rect x="{left + (100-narrow_width)/2}" y="{top + wide_height + narrow_height + wide_height}" width="{narrow_width}" height="{narrow_height}" fill="#000000" />',
+    ]
+
+    knurl_angle = 30  # degrees
+    knurl_spacing = 10
+    knurl_height = wide_height
+
+    left_knurl_lines = ""
+    right_knurl_lines = ""
+    # Left slanting lines for top wide section
+    for x in range(int((100 - wide_width) / 2), int((100 + wide_width) / 2) + knurl_spacing, knurl_spacing):
+        x1 = x + left
+        y1 = top
+        x2 = x1 - knurl_height * math.tan(math.radians(knurl_angle))
+        y2 = top + knurl_height
+        left_knurl_lines += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="#FFFFFF" stroke-width="2"/>'
+    # Right slanting lines for bottom wide section
+    for x in range(int((100 - wide_width) / 2), int((100 + wide_width) / 2) + knurl_spacing, knurl_spacing):
+        x1 = x + left
+        y1 = top + wide_height + narrow_height
+        x2 = x1 + knurl_height * math.tan(math.radians(knurl_angle))
+        y2 = top + wide_height + narrow_height + knurl_height
+        right_knurl_lines += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="#FFFFFF" stroke-width="2"/>'
+
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <!-- Base rectangles body -->
+        {''.join(rects)}
+        <!-- Hatch lines for knurling -->
+        {left_knurl_lines}
+        {right_knurl_lines}
+    </svg>
+    """
+
+
+def insert_wood_top(diameter: float = 80) -> str:
+    # Wood insert: circle with radial serrations (teeth)
+    teeth = "".join(
+        [f'<path d="M50 22 L54 34 L46 34 Z" transform="rotate({i*360/12} 50 50)" fill="#000000"/>' for i in range(12)]
+    )
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{diameter * 0.5}" fill="#000000" />
+        {teeth}
+    </svg>
+    """
+
+
+def insert_wood_side(diameter: float = 80) -> str:
+    # Side view with external thread-like notches
+    notches = "".join(
+        [f'<rect x="{40+i*3}" y="{(diameter * 0.8)+i%2*6}" width="2" height="10" fill="#FFFFFF" />' for i in range(6)]
+    )
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <rect x="42" y="20" width="16" height="60" fill="#000000" />
+        {notches}
+    </svg>
+    """
+
+
+def insert_press_top(diameter: float = 80) -> str:
+    # Press-fit insert top: circle with grooves
+    rings = "".join(
+        [
+            f'<circle cx="50" cy="50" r="{(diameter * 0.8)+i*3}" fill="none" stroke="#000000" stroke-width="2"/>'
+            for i in range(3)
+        ]
+    )
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{diameter * 0.8}" fill="#000000" />
+        {rings}
+    </svg>
+    """
+
+
+def insert_press_side(diameter: float = 80) -> str:
+    # Side view with multiple retaining grooves
+    grooves = "".join([f'<rect x="38" y="{30+i*10}" width="24" height="4" fill="#FFFFFF" />' for i in range(4)])
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <rect x="40" y="18" width="20" height="64" fill="#000000" />
+        {grooves}
+    </svg>
+    """
+
+
+## Head top icons ##
+
+
+def head_hex_top(diameter: float = 80) -> str:
+    """Hex head, top view
+    A hexagon
+    """
+    flat_to_flat = diameter * math.sqrt(3) / 2
+    points_str = polygon_points(6, flat_to_flat, rotation_deg=30)
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <polygon {points_str} fill="#000000" />
+    </svg>
+    """
+
+
+def head_socket_top(diameter: float = 80) -> str:
+    """Socket Hex head, top view
+    A circle with an inner hexagon
+    """
+    flat_to_flat = diameter * math.sqrt(3) / 3
+    points_str = polygon_points(6, flat_to_flat)
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{diameter * 0.5}" fill="#000000" />
+        <polygon {points_str} fill="#FFFFFF" />
+    </svg>
+    """
+
+
+def head_torx_top(diameter: float = 80) -> str:
+    """Torx head, top view
+    A circle with a 6 lobed rounded star shape inside
+    """
+    lobes = 6
+    path = star(lobes, diameter * 0.3, diameter * 0.2)
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{diameter * 0.5}" fill="#000000" />
+        <path {path} fill="#FFFFFF"/>
+    </svg>
+    """
+
+
+def head_slotted_top(diameter: float = 80) -> str:
+    """Slotted head, top view
+    A circle with a horizontal bar through it
+    """
+    slot_width = diameter * 0.2
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{diameter * 0.5}" fill="#000000" />
+        <rect x="{diameter*0.2}" y="{50 - (slot_width * 0.5)}" width="{diameter * 0.8}" height="{slot_width}" fill="#FFFFFF" />
+    </svg>
+    """
+
+
+def head_phillips_top(diameter: float = 80) -> str:
+    """Phillips head, top view
+    A circle with a cross through it
+    """
+    slot_width = diameter * 0.2
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{diameter * 0.5}" fill="#000000" />
+        <rect x="{50 - (slot_width * 0.5)}" y="{diameter*0.2}" width="{slot_width}" height="{diameter * 0.8}" fill="#FFFFFF" />
+        <rect x="{diameter*0.2}" y="{50 - (slot_width * 0.5)}" width="{diameter * 0.8}" height="{slot_width}" fill="#FFFFFF" />
+    </svg>
+    """
+
+
+def head_square_top(diameter: float = 80) -> str:
+    """Square drive (aka Robertson) top
+    A circle with a square in the center
+    """
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{diameter * 0.5}" fill="#000000" />
+        <rect x="{diameter * 0.25}" y="{diameter * 0.25}" width="{diameter * 0.25}" height="{diameter * 0.25}" fill="#FFFFFF" />
+    </svg>
+    """
+
+
+def head_pozidriv_top(diameter: float = 80) -> str:
+    """Pozidriv head, top view
+    A circle with a cross and additional smaller bars at 45 degree angles
+    """
+    slot_width = diameter * 0.2
+    pozi_width = slot_width * 0.5
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{diameter * 0.5}" fill="#000000" />
+        <rect x="{50 - (slot_width * 0.5)}" y="{diameter * 0.2}" width="{slot_width}" height="{diameter * 0.8}" fill="#FFFFFF" />
+        <rect x="{diameter * 0.2}" y="{50 - (slot_width * 0.5)}" width="{diameter * 0.8}" height="{slot_width}" fill="#FFFFFF" />
+        <rect x="{50 - (pozi_width*0.5)}" y="{diameter * 0.2}" width="{pozi_width}" height="{diameter * 0.8}" fill="#FFFFFF" transform="rotate(45 50 50)" />
+        <rect x="{50 - (pozi_width*0.5)}" y="{diameter * 0.2}" width="{pozi_width}" height="{diameter * 0.8}" fill="#FFFFFF" transform="rotate(-45 50 50)" />
+    </svg>
+    """

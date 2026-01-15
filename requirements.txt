@@ -1,0 +1,6 @@
+cairosvg
+colorama
+jinja2
+Pillow
+segno
+requests # for URL shortening

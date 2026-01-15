@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jinja2-based SVG template.
+    Expects variables: LABEL_WIDTH_MM, LABEL_HEIGHT_MM, name, description, icon_svg, qr_svg
+-->
+{%- set LABEL_WIDTH_MM = LABEL_WIDTH_MM | default(36) %}
+{%- set LABEL_HEIGHT_MM = LABEL_HEIGHT_MM | default(9) %}
+{%- set name_font_size = LABEL_HEIGHT_MM * 0.15 %}
+{%- set desc_font_size = LABEL_HEIGHT_MM * 0.12 %}
+
+<svg xmlns="http://www.w3.org/2000/svg" width="{{ LABEL_WIDTH_MM }}mm" height="{{ LABEL_HEIGHT_MM }}mm" viewBox="0 0 {{ LABEL_WIDTH_MM }} {{ LABEL_HEIGHT_MM }}" preserveAspectRatio="none">
+
+  <style>
+    .bg { fill: white; }
+    .icon { fill: black; }
+    .name { font-family: "Roboto", sans-serif; font-size: {{ name_font_size }}mm; font-weight: 700; fill: #000000; overflow: hidden; text-overflow: ellipsis; }
+    .desc { font-family: "Roboto", sans-serif; font-size: {{ desc_font_size }}mm; fill: #000000; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+
+  <!-- Background -->
+  <rect class="bg" x="0" y="0" width="{{ LABEL_WIDTH_MM }}" height="{{ LABEL_HEIGHT_MM }}" rx="0" ry="0"/>
+
+  <!-- Icon area (left) -->
+  {%- set icon_box = LABEL_HEIGHT_MM %}
+  {%- set icon_padding = 0 %}
+  {%- set icon_height = LABEL_HEIGHT_MM - (icon_padding * 2) %}
+  {%- set icon_width = icon_height %}
+  {%- set icon_scale = icon_height / 29 %}
+  {%- if icon_svg %}
+  <g transform="translate({{ icon_padding }}, {{ icon_padding }}), scale({{ icon_scale }})">
+    <svg class ="icon" x="0" y="0" width="{{ icon_width }}mm" height="{{ icon_height }}mm" preserveAspectRatio="xMinYMin meet">
+      {{ icon_svg | safe }}
+    </svg>
+  </g>
+  {%- endif %}
+
+    <!-- Name + description area (middle) -->
+  {%- set text_x_offset = LABEL_HEIGHT_MM if icon_svg else 0 %}
+  {%- set available_width = LABEL_WIDTH_MM - text_x_offset - LABEL_HEIGHT_MM - (LABEL_HEIGHT_MM * 0.15) %}
+  {%- set name_font_size = name_font_size %}
+  {%- set desc_font_size = desc_font_size %}
+  {%- set name_max_scale = available_width / (name_font_size * 15) %}
+  {%- set desc_max_scale = available_width / (desc_font_size * 20) %}
+  {%- set name_scale = name_max_scale if name_max_scale  < 1 else 1 %}
+  {%- set desc_scale = desc_max_scale if desc_max_scale < 1 else 1 %}
+  <g transform="translate({{ text_x_offset * 1.05}}, {{ LABEL_HEIGHT_MM * 0.25 }})">
+    <text class="name" x="0" y="0" dominant-baseline="middle" transform="scale({{ name_scale }})">{{ name }}</text>
+    <text class="desc" x="0" y="{{ LABEL_HEIGHT_MM * 0.50 }}" dominant-baseline="middle" transform="scale({{ desc_scale }})">{{ description }}</text>
+  </g>
+
+  <!-- QR area (right) -->
+  {%- set qr_height = qr_size %}
+  {%- set qr_width = qr_height %}
+  {%- set qr_scale = LABEL_HEIGHT_MM / qr_height %}
+  {%- set qr_x = LABEL_WIDTH_MM - (qr_width * qr_scale) %}
+  {%- set qr_y = 0 %}
+  <g transform="translate({{ qr_x }}, {{ qr_y }}), scale( {{ qr_scale }} )">
+    {{ qr_svg | safe }}
+  </g>
+
+</svg>
