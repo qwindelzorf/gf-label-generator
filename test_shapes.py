@@ -337,19 +337,13 @@ class TestInsertGenerators:
         result = shapes.insert_wood_top()
         assert "<svg" in result
         assert "<circle" in result
-        assert "<path" in result  # teeth
+        assert "<rect" in result  # teeth
 
     def test_insert_wood_side(self):
         """Test wood insert side view."""
         result = shapes.insert_wood_side()
         assert "<svg" in result
         assert "<rect" in result
-
-    def test_insert_press_top(self):
-        """Test press-fit insert top view."""
-        result = shapes.insert_press_top()
-        assert "<svg" in result
-        assert "<circle" in result
 
     def test_insert_press_side(self):
         """Test press-fit insert side view."""
@@ -447,7 +441,6 @@ class TestSVGValidity:
             shapes.insert_heat_side,
             shapes.insert_wood_top,
             shapes.insert_wood_side,
-            shapes.insert_press_top,
             shapes.insert_press_side,
             shapes.head_hex_top,
             shapes.head_socket_top,

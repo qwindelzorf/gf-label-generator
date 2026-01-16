@@ -94,7 +94,7 @@ TOP_ICON_GENERATORS: dict[str, Callable] = {
     "wing": shape_gen.nut_wing_top,
     "insert_heat": shape_gen.insert_heat_top,
     "insert_wood": shape_gen.insert_wood_top,
-    "insert_press": shape_gen.insert_press_top,
+    "insert_press": shape_gen.insert_wood_top,  # same as wood insert top
     "hex": shape_gen.head_hex_top,
     "socket": shape_gen.head_socket_top,
     "cap": shape_gen.head_socket_top,
@@ -150,30 +150,6 @@ def error(msg: str, *args, **kwargs) -> None:
 
 
 # Program code
-
-
-def compose_icons(top_icon: str, side_icon: str) -> str:
-    """Compose top and side icons into a single SVG snippet in a 100x100 viewBox.
-    Side icon on left (scaled to full height), top icon on right (scaled to fit remaining space).
-    """
-    if not top_icon and not side_icon:
-        return ""
-
-    if not top_icon or not side_icon:
-        # Only one icon: wrap it alone
-        final_icon = top_icon or side_icon
-    else:
-        # Both icons: side on left (full height, 30% wide), top on right (Full height, 70% wide)
-        final_icon = f"""
-        <g transform="translate({LABEL_HEIGHT_MM*-1.0},{LABEL_HEIGHT_MM*2.0/100.0}) scale({LABEL_HEIGHT_MM*3.0/100.0})">
-            {side_icon}
-        </g>
-        <g transform="translate({LABEL_HEIGHT_MM*1.25},{LABEL_HEIGHT_MM*0.5}) scale({LABEL_HEIGHT_MM*2.0/100.0})">
-            {top_icon}
-        </g>
-        """
-
-    return final_icon
 
 
 def read_template(template_file: Path) -> Template:
@@ -272,7 +248,6 @@ def generate_labels(
                     error(f"side icon generator not found for '{side_symbol}'")
                 else:
                     side_icon = side_gen()
-            icon_svg = compose_icons(top_icon, side_icon)
             qr_svg, qr_width = make_qr_svg(reorder_url, LABEL_HEIGHT_MM, qr_type=qr_type)
 
             svg_filled = template.render(
@@ -281,7 +256,8 @@ def generate_labels(
                     "LABEL_HEIGHT_MM": LABEL_HEIGHT_MM,
                     "name": name,
                     "description": description,
-                    "icon_svg": icon_svg,
+                    "top_icon_svg": top_icon,
+                    "side_icon_svg": side_icon,
                     "qr_svg": qr_svg,
                     "qr_size": qr_width,  # size of the generated QR code in mm
                 }

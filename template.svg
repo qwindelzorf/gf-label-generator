@@ -20,21 +20,43 @@
   <rect class="bg" x="0" y="0" width="{{ LABEL_WIDTH_MM }}" height="{{ LABEL_HEIGHT_MM }}" rx="0" ry="0"/>
 
   <!-- Icon area (left) -->
-  {%- set icon_box = LABEL_HEIGHT_MM %}
-  {%- set icon_padding = 0 %}
-  {%- set icon_height = LABEL_HEIGHT_MM - (icon_padding * 2) %}
-  {%- set icon_width = icon_height %}
-  {%- set icon_scale = icon_height / 29 %}
-  {%- if icon_svg %}
-  <g transform="translate({{ icon_padding }}, {{ icon_padding }}), scale({{ icon_scale }})">
-    <svg class ="icon" x="0" y="0" width="{{ icon_width }}mm" height="{{ icon_height }}mm" preserveAspectRatio="xMinYMin meet">
-      {{ icon_svg | safe }}
-    </svg>
+  {##
+  Incoming icons are assumed to be 100x100, and are scaled to fit within icon_size x icon_size mm area.
+  Scaling and placement rules:
+  - If both top and side icons are provided:
+    - the top-view icon is scaled to 60% size and placed in upper 60% of icon area, centered horizontally
+    - the side-view icon is rotated 90 degrees CCW and placed below in the lower 40% of icon area, centered horizontally
+  - If only one icon is provided:
+    - it is scaled to fit the available icon area (100% of height) and centered vertically and horizontally
+
+  In all cases, the icon area is a square of size LABEL_HEIGHT_MM x LABEL_HEIGHT_MM on the left side of the label.
+  A viewBox of 0 0 100 100 is assumed for the incoming SVG icons.
+  viewBox origin is at top-left corner, and y increases downward, x to the right
+  A viewBox is used to constrain the icon drawing area, providing scaling and clipping as needed.
+  ##}
+  {%- if side_icon_svg and top_icon_svg %}
+  {## dual icon view ##}
+  <!-- top view icon -->
+  <g transform="translate({{ LABEL_HEIGHT_MM * 0.5 }}, {{ LABEL_HEIGHT_MM * 0.3 }} ) scale( {{ LABEL_HEIGHT_MM * 0.6 / 100 }} ) translate(-50, -50)">
+      {{ top_icon_svg | safe }}
+  </g>
+  <!-- side view icon -->
+  <g transform="translate({{ LABEL_HEIGHT_MM * 0.5 }}, {{ LABEL_HEIGHT_MM * 0.8 }} ) scale( {{ LABEL_HEIGHT_MM * 0.75 / 100 }} ) rotate(-90, 0, 0) translate(-50, -50)">
+      {{ side_icon_svg | safe }}
+  </g>
+  {%- elif top_icon_svg or side_icon_svg %}
+  {## single icon view ##}
+  <g transform="translate({{ LABEL_HEIGHT_MM * 0.5 }}, {{ LABEL_HEIGHT_MM * 0.5 }} ) scale( {{ LABEL_HEIGHT_MM * 0.9 / 100 }} ) translate(-50, -50)">
+      {%- if top_icon_svg %}
+        {{ top_icon_svg | safe }}
+      {%- else %}
+        {{ side_icon_svg | safe }}
+      {%- endif %}
   </g>
   {%- endif %}
 
-    <!-- Name + description area (middle) -->
-  {%- set text_x_offset = LABEL_HEIGHT_MM if icon_svg else 0 %}
+  <!-- Name & description area (middle) -->
+  {%- set text_x_offset = LABEL_HEIGHT_MM if top_icon_svg or side_icon_svg else 0 %}
   {%- set available_width = LABEL_WIDTH_MM - text_x_offset - LABEL_HEIGHT_MM - (LABEL_HEIGHT_MM * 0.15) %}
   {%- set name_font_size = name_font_size %}
   {%- set desc_font_size = desc_font_size %}

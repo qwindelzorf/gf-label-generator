@@ -47,48 +47,6 @@ class TestMmToPx:
         assert isinstance(result, int)
 
 
-class TestComposeIcons:
-    """Test icon composition logic."""
-
-    def test_compose_icons_both_empty(self):
-        """Test with no icons."""
-        result = generator.compose_icons("", "")
-        assert result == ""
-
-    def test_compose_icons_only_top(self):
-        """Test with only top icon."""
-        top_svg = '<circle cx="50" cy="50" r="20"/>'
-        result = generator.compose_icons(top_svg, "")
-        assert top_svg in result
-        assert "<g transform=" not in result  # no positioning when only one
-
-    def test_compose_icons_only_side(self):
-        """Test with only side icon."""
-        side_svg = '<rect x="10" y="10" width="20" height="20"/>'
-        result = generator.compose_icons("", side_svg)
-        assert side_svg in result
-        assert "<g transform=" not in result  # no positioning when only one
-
-    def test_compose_icons_both_present(self):
-        """Test with both top and side icons."""
-        top_svg = '<circle cx="50" cy="50" r="20"/>'
-        side_svg = '<rect x="10" y="10" width="20" height="20"/>'
-        result = generator.compose_icons(top_svg, side_svg)
-        assert top_svg in result
-        assert side_svg in result
-        assert "<g transform=" in result
-        # Should have two g groups
-        assert result.count("<g transform=") == 2
-
-    def test_compose_icons_preserves_content(self):
-        """Test that icon content is preserved."""
-        top_svg = '<path d="M10 10 L20 20"/>'
-        side_svg = '<polygon points="10,10 20,20 30,30"/>'
-        result = generator.compose_icons(top_svg, side_svg)
-        assert "M10 10 L20 20" in result
-        assert "10,10 20,20 30,30" in result
-
-
 class TestMakeQrSvg:
     """Test QR code generation."""
 
