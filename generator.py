@@ -124,12 +124,12 @@ xprint = print  # backup the normal print function
 
 def debug(msg: str, *args, **kwargs) -> None:
     if LOG_LEVEL <= LogLevel.DEBUG:
-        print(f"{colorama.Fore.BLUE}[DEBUG] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
+        xprint(f"{colorama.Fore.BLUE}[DEBUG] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
 
 
 def info(msg: str, *args, **kwargs) -> None:
     if LOG_LEVEL <= LogLevel.INFO:
-        print(f"{colorama.Fore.GREEN}[INFO ] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
+        xprint(f"{colorama.Fore.GREEN}[INFO ] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
 
 
 def print(msg: str, *args, **kwargs) -> None:
@@ -139,14 +139,14 @@ def print(msg: str, *args, **kwargs) -> None:
 
 def warn(msg: str, *args, **kwargs) -> None:
     if LOG_LEVEL <= LogLevel.WARNING:
-        print(f"{colorama.Fore.YELLOW}[WARN ] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
+        xprint(f"{colorama.Fore.YELLOW}[WARN ] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
 
 
 def error(msg: str, *args, **kwargs) -> None:
     if LOG_LEVEL <= LogLevel.ERROR:
         if "file" not in kwargs:
             kwargs["file"] = sys.stderr
-        print(f"{colorama.Fore.RED}[ERROR] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
+        xprint(f"{colorama.Fore.RED}[ERROR] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
 
 
 # Program code
