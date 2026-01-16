@@ -12,7 +12,11 @@ import math
 
 
 def polygon_points(
-    n: int, flat_to_flat: float, cx: float = 50, cy: float = 50, rotation_deg: float | None = None
+    n: int,
+    flat_to_flat: float,
+    cx: float = 50,
+    cy: float = 50,
+    rotation_deg: float | None = None,
 ) -> str:
     """Return a string of x,y points for an n-sided regular polygon sized by flat-to-flat distance.
 
@@ -81,7 +85,7 @@ def button_side(head_diameter: float, head_height: float) -> str:
     return head
 
 
-def countersunk_side(head_diameter: float, head_height: float) -> str:
+def countersunk_side(head_diameter: float = 50, head_height: float = 20) -> str:
     """Generic countersunk head side view
     a trapezoid centered in the field, smaller at the bottom.
     """
@@ -198,17 +202,16 @@ def hex_head_side() -> str:
     """
 
 
-def flat_head_side() -> str:
+def flush_head_side() -> str:
     """Flat head screw, side view.
     A vertical rectangle (shaft) with a countersunk triangle on top (head).
     """
     head_diameter = 50
-    head_height = 20
-    shaft_width = 25
+    shaft_width = 20
     shaft_length = 80
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
-        {countersunk_side(head_diameter, head_height)}
+        {countersunk_side(head_diameter, shaft_width)}
         {bolt_shaft(shaft_width, shaft_length)}
     </svg>
     """
@@ -218,13 +221,12 @@ def wood_screw_side() -> str:
     """Wood screw, side view.
     A vertical rectangle (shaft) with a pointed tip and a countersunk head on top.
     """
-    head_diameter = 40
-    head_height = 20
+    head_diameter = 50
     shaft_width = 20
     shaft_length = 80
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
-        {countersunk_side(head_diameter, head_height)}
+        {countersunk_side(head_diameter, shaft_width)}
         {bolt_shaft(shaft_width, shaft_length, pointed=True)}
     </svg>
     """
@@ -282,7 +284,7 @@ def washer_split_side(diameter: float = 80) -> str:
     <svg width="100" height="100" viewBox="0 0 100 100">
         <path d="M {(100-thickness)/2} {(100-outer_diameter)/2+5} Q {(100-thickness)/2-5} {50-5} {(100-thickness)/2} {50} Q {(100-thickness)/2+5} {50+5} {(100-thickness)/2} {(100+outer_diameter)/2-5}"
               stroke="#000000" stroke-width="{thickness}" fill="none"/>
-        <line x2="{(100-thickness)/2 - 10}" y1="{(100-inner_diameter)/2}" x1="{(100+thickness)/2 + 10}" y2="{(100+inner_diameter)/2}" stroke="#FFFFFF" stroke-width="4"/>
+        <line x2="{(100-thickness)/2 - 10}" y1="{(100-inner_diameter)/2}" x1="{(100+thickness)/2 + 10}" y2="{(100+inner_diameter)/2}" stroke="#FFFFFF" stroke-width="{thickness}"/>
     </svg>
     """
 
@@ -370,7 +372,7 @@ def nut_thin_top(diameter: float = 80) -> str:
     # Thinner nut (smaller across-flats)
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
-        {nut_hex_top(diameter * 2 * math.sqrt(3) / 2 * 0.75)}
+        {nut_hex_top(diameter)}
     </svg>
     """
 
@@ -378,7 +380,7 @@ def nut_thin_top(diameter: float = 80) -> str:
 def nut_thin_side(diameter: float = 80) -> str:
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
-        {nut_hex_side(15, diameter)}
+        {nut_hex_side(30, diameter)}
     </svg>
     """
 
@@ -541,14 +543,22 @@ def insert_heat_side(diameter: float = 80, length: float = 60) -> str:
     left_knurl_lines = ""
     right_knurl_lines = ""
     # Left slanting lines for top wide section
-    for x in range(int((100 - wide_width) / 2), int((100 + wide_width) / 2) + knurl_spacing, knurl_spacing):
+    for x in range(
+        int((100 - wide_width) / 2),
+        int((100 + wide_width) / 2) + knurl_spacing,
+        knurl_spacing,
+    ):
         x1 = x + left
         y1 = top
         x2 = x1 - knurl_height * math.tan(math.radians(knurl_angle))
         y2 = top + knurl_height
         left_knurl_lines += f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="#FFFFFF" stroke-width="2"/>'
     # Right slanting lines for bottom wide section
-    for x in range(int((100 - wide_width) / 2), int((100 + wide_width) / 2) + knurl_spacing, knurl_spacing):
+    for x in range(
+        int((100 - wide_width) / 2),
+        int((100 + wide_width) / 2) + knurl_spacing,
+        knurl_spacing,
+    ):
         x1 = x + left
         y1 = top + wide_height + narrow_height
         x2 = x1 + knurl_height * math.tan(math.radians(knurl_angle))
@@ -612,17 +622,18 @@ def insert_press_side(diameter: float = 60) -> str:
     radius = diameter / 2
     height = diameter * 1.2
     section_height = height * 0.25
-    groove_spacing = diameter * 0.3
+    groove_spacing = diameter * 0.2
+    num_grooves = 8
     upper_grooves = "".join(
         [
-            f'<rect x="{50 - radius + i*groove_spacing}" y="{100 - height - section_height}" width="{2}" height="{section_height}" fill="#FFFFFF"/>'
-            for i in range(4)
+            f'<rect x="{50 - radius + i*groove_spacing - groove_spacing/3}" y="{100 - height - section_height}" width="{2}" height="{section_height}" fill="#FFFFFF"/>'
+            for i in range(num_grooves)
         ]
     )
     lower_grooves = "".join(
         [
             f'<rect x="{50 - radius + i*groove_spacing - groove_spacing/2}" y="{(100 - height)/2 + height - section_height}" width="{2}" height="{section_height}" fill="#FFFFFF"/>'
-            for i in range(4)
+            for i in range(num_grooves)
         ]
     )
     return f"""
@@ -684,33 +695,6 @@ def head_torx_top(diameter: float = 80) -> str:
     """
 
 
-def head_slotted_top(diameter: float = 80) -> str:
-    """Slotted head, top view
-    A circle with a horizontal bar through it
-    """
-    slot_width = diameter * 0.2
-    return f"""
-    <svg width="100" height="100" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="{diameter * 0.5}" fill="#000000" />
-        <rect x="{diameter*0.2}" y="{50 - (slot_width * 0.5)}" width="{diameter * 0.8}" height="{slot_width}" fill="#FFFFFF" />
-    </svg>
-    """
-
-
-def head_phillips_top(diameter: float = 80) -> str:
-    """Phillips head, top view
-    A circle with a cross through it
-    """
-    slot_width = diameter * 0.2
-    return f"""
-    <svg width="100" height="100" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="{diameter * 0.5}" fill="#000000" />
-        <rect x="{50 - (slot_width * 0.5)}" y="{diameter*0.2}" width="{slot_width}" height="{diameter * 0.8}" fill="#FFFFFF" />
-        <rect x="{diameter*0.2}" y="{50 - (slot_width * 0.5)}" width="{diameter * 0.8}" height="{slot_width}" fill="#FFFFFF" />
-    </svg>
-    """
-
-
 def head_square_top(diameter: float = 80) -> str:
     """Square drive (aka Robertson) top
     A circle with a square in the center
@@ -724,18 +708,52 @@ def head_square_top(diameter: float = 80) -> str:
     """
 
 
+def slot(length: float = 75, width: float = 10, angle: float = 0) -> str:
+    """Helper function to create a slot shape
+    A rectangle centered in the viewbox
+    """
+    return f"""
+    <rect x="{(100 - length) / 2}" y="{(100 - width) / 2}" width="{length}" height="{width}" transform="rotate({angle}, 50, 50)" fill="#FFFFFF" />
+    """
+
+
+def head_slotted_top(diameter: float = 80) -> str:
+    """Slotted head, top view
+    A circle with a horizontal bar through it
+    """
+    radius = diameter * 0.5
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{radius}" fill="#000000" />
+        {slot()}
+    </svg>
+    """
+
+
+def head_phillips_top(diameter: float = 80) -> str:
+    """Phillips head, top view
+    A circle with a cross through it
+    """
+    radius = diameter * 0.5
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{radius}" fill="#000000" />
+        {slot()}
+        {slot(angle = 90)}
+    </svg>
+    """
+
+
 def head_pozidriv_top(diameter: float = 80) -> str:
     """Pozidriv head, top view
     A circle with a cross and additional smaller bars at 45 degree angles
     """
-    slot_width = diameter * 0.2
-    pozi_width = slot_width * 0.5
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="{diameter * 0.5}" fill="#000000" />
-        <rect x="{50 - (slot_width * 0.5)}" y="{diameter * 0.2}" width="{slot_width}" height="{diameter * 0.8}" fill="#FFFFFF" />
-        <rect x="{diameter * 0.2}" y="{50 - (slot_width * 0.5)}" width="{diameter * 0.8}" height="{slot_width}" fill="#FFFFFF" />
-        <rect x="{50 - (pozi_width*0.5)}" y="{diameter * 0.2}" width="{pozi_width}" height="{diameter * 0.8}" fill="#FFFFFF" transform="rotate(45 50 50)" />
-        <rect x="{50 - (pozi_width*0.5)}" y="{diameter * 0.2}" width="{pozi_width}" height="{diameter * 0.8}" fill="#FFFFFF" transform="rotate(-45 50 50)" />
+        {slot(angle = 0)}
+        {slot(angle = 90)}
+        {slot(width = 5, length = 50, angle =45)}
+        {slot(width = 5, length = 50, angle = -45)}
     </svg>
     """

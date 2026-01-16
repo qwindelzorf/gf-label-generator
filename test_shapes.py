@@ -146,7 +146,7 @@ class TestScrewGenerators:
 
     def test_flat_head_side(self):
         """Test flat head screw side view."""
-        result = shapes.flat_head_side()
+        result = shapes.flush_head_side()
         assert "<svg" in result
         assert "<path" in result  # countersunk head
 
@@ -413,7 +413,7 @@ class TestSVGValidity:
             shapes.button_head_side,
             shapes.cap_head_side,
             shapes.hex_head_side,
-            shapes.flat_head_side,
+            shapes.flush_head_side,
             shapes.wood_screw_side,
             shapes.washer_std_top,
             shapes.washer_std_side,
