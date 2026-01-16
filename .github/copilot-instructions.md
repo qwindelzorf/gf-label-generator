@@ -1,77 +1,61 @@
-# Gridfinity Label Generator - AI Agent Instructions
+# Gridfinity Label Generator — Copilot Instructions (for AI coding agents)
 
-## Project Overview
-This is a Python-based label generator for Gridfinity bins. It reads part data from CSV, fills an SVG template using Jinja2, generates QR codes, and outputs PDFs/PNGs/SVGs suitable for label printing.
+Purpose: help an AI agent become productive quickly in this repo by summarizing architecture, workflows, conventions, and important code patterns discovered in `generator.py`, `template.svg`, and `shapes.py`.
 
-## Architecture & Data Flow
-1. **Input**: CSV file ([parts.csv](../parts.csv)) with columns: `name,description,top_symbol,side_symbol,reorder_url`
-2. **Template**: [template.svg](../template.svg) - Jinja2-templated SVG with placeholders for text, icons, and QR codes
-3. **Processing**: [generator.py](../generator.py) fills template for each CSV row
-4. **Output**: SVG/PDF/PNG files per row in the CSV in `output/` directory
+Core files
+- `generator.py`: main program — CSV -> templated SVG -> exported PNG/PDF/SVG. Key functions: `generate_labels()`, `make_qr_svg()`, `compose_icons()`, `mm_to_px()`.
+- `template.svg`: Jinja2 SVG template. Expects variables: `LABEL_WIDTH_MM`, `LABEL_HEIGHT_MM`, `name`, `description`, `icon_svg`, `qr_svg`, `qr_size`.
+- `shapes.py`: icon generator functions that return SVG snippets (strings) used by mappings in `generator.py`.
+- `parts.csv`: canonical input CSV; exact column names required: `name,description,top_symbol,side_symbol,reorder_url`.
 
-## Key Technical Patterns
+Big picture
+- Data flow: read `parts.csv` -> for each row, map `top_symbol`/`side_symbol` to generator functions in `TOP_ICON_GENERATORS`/`SIDE_ICON_GENERATORS` -> compose icon SVG via `compose_icons()` -> create QR SVG via `make_qr_svg()` -> render `template.svg` with Jinja2 -> convert to PNG/PDF (CairoSVG) or write raw SVG.
+- Why structure is this way: SVG templating keeps layout vector-first; icon generators produce small SVG fragments so labels stay compact and fully vector; QR generation is embedded as SVG to preserve sharpness.
 
-### Label Dimensions
-- Fixed size: 9mm × 36mm (configured in `LABEL_WIDTH_MM`/`LABEL_HEIGHT_MM`), which fits standard 1x1 Gridfinity label holders
-- Conversion to pixels uses 150 DPI in `mm_to_px()` function (configured in `LABEL_PRINTER_DPI` constant)
+Important, project-specific patterns & gotchas
+- Icon registries: `TOP_ICON_GENERATORS` and `SIDE_ICON_GENERATORS` map CSV token -> function in `shapes.py`. Keys are case-sensitive and must match the CSV values.
+- `compose_icons(top_icon, side_icon)`: if both present, returns positioned `<g>` groups scaled to a 100x100-like view. If only one icon present the raw icon SVG is used.
+- QR generation (`make_qr_svg`): attempts to shorten HTTP(S) URLs via `https://v.gd` to fit micro QR codes; strips URL scheme before micro-QR encoding; falls back to standard QR when too long; returns (svg_body, symbol_size). It also strips the XML declaration to avoid duplication when embedding.
+- Template variables: `qr_size` passed into the template is the QR symbol size used by the template to scale placement. The template computes `qr_scale` and positions the QR on the right.
+- Measurement units: label sizes are in millimeters. `mm_to_px()` uses `LABEL_PRINTER_DPI` (default 150) — changing DPI affects output raster sizes.
+- Filename policy: output filename is built from `name` and `description` with specific sanitization (`/` replaced with `-`, spaces to `_`) — keep this when modifying filename logic.
+- Logging: `generator.py` defines custom logging helpers (`debug`, `info`, `print`, `warn`, `error`) and a `LOG_LEVEL` enum. CLI flags `-q/--quiet` and `-v/--verbose` adjust `LOG_LEVEL`.
 
-### SVG Template Structure
-
-### Icon Integration
-- Icons are SVGs, generated via functions in `ICON_GENERATORS` dictionary
-- Icons scaled to fit within a 100mm square area on the left side of the label
-- The template scales icons down to fit the label height while maintaining aspect ratio
-
-### QR Code Generation
-- Uses `segno` library with `micro=True` setting
-- XML declaration stripped from generated SVG to prevent duplication when embedding
-- Always generated from `reorder_url` field
-  - Tries to generate a micro QR; falls back to standard QR if URL too long
-  - Embedded directly into the label SVG
-  - QR code doesn't necessarily have to be valid URL; can be any string
-  - If it is a URL, it should start with `http://` or `https://` to ensure proper encoding
-  - URLs will be attempted to be shortened, by using external services, if they exceed micro QR capacity
-
-### Output Formats
-- One file per label, type as specified: `output/{filename}.png`
-- PDF/PNG use `cairosvg` with dimensions calculated via `mm_to_px()`
-- PNG is the default output format
-
-## Development Workflow
-
-### Running the Generator
-```bash
-python generator.py
+How to run (developer workflows)
+- Create/activate virtualenv and install deps:
 ```
-Hardcoded to read `parts.csv` by default, but may be changed with a command line argument.
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+- Run generator (defaults to `parts.csv`, `template.svg`, `output/`):
+```
+python3 generator.py
+```
+- Useful flags:
+  - `--format` choose output: `png` (default), `pdf`, or `svg`.
+  - `--qr-type` choose `micro` (default) or `standard`.
+  - `-q/--quiet` suppresses non-error logs.
+  - `-v/--verbose` increase logging verbosity (repeatable).
 
-### Dependencies
-Install via: `pip install -r requirements.txt`
-- `segno`: QR code generation
-- `jinja2`: SVG templating
-- `cairosvg`: SVG→PDF/PNG conversion (requires Cairo system library)
+Where to look for change points
+- If adding new icon types: add a generator in `shapes.py` and register it in both `TOP_ICON_GENERATORS`/`SIDE_ICON_GENERATORS` as needed.
+- If changing label layout: edit `template.svg` — template expects the SVG snippet for `icon_svg` and `qr_svg` already scaled; the template uses mm-based font sizes and positions.
+- If changing QR behavior: update `make_qr_svg()` (URL shortening, micro vs standard logic, border, or SVG cleanup).
 
-### Printing Labels
-Use `ptouch-print` command (see [readme.md](../readme.md)) to send PNGs to label printer.
+Testing & iteration tips for agents
+- Quick local run: create a small `parts.csv` row and run `python3 generator.py --format=svg` to inspect the produced SVG (fast, no Cairo dependency required for viewing vectors).
+- When modifying icon functions, returning valid SVG fragments (no XML declaration, valid viewBox or paths) keeps embedding simple.
+- To debug layout, open the generated SVG in a vector viewer (Inkscape or browser) rather than raster output.
 
-## Important Conventions
+Files/locations to reference often
+- `generator.py` — orchestrator and source of most behavioral details
+- `template.svg` — layout rules (font sizes computed from `LABEL_HEIGHT_MM`)
+- `shapes.py` — icon primitives
+- `parts.csv` — example data and required CSV columns
+- `requirements.txt` — external deps: `segno`, `jinja2`, `cairosvg`, `requests`
 
-### Icon Generation
-- Icon generator functions take no parameters and return SVG strings
-- Icon names in CSV must match keys in `*_ICON_GENERATORS` dictionaries (case-sensitive)
-- Missing icon generators will raise errors during generation
-- Icons are designed to fit within a 100mm square area before scaling
+Next steps for the agent
+- Preserve existing README content when updating docs; edit `template.svg` only when confident about mm-to-px impacts; prefer generating `svg` outputs to iterate quickly.
 
-### File Naming
-- Input CSV must have exact column names: `name,description,top_symbol,side_symbol,reorder_url`
-- Output files named using `name` field - ensure no special characters/spaces
-
-### Color Handling
-- Colors default to `#000000` if empty/missing in CSV
-- SVG elements use inline `fill` attributes for color specification
-
-### Issues to Watch
-- No error handling for missing/malformed icon paths or reorder URLs
-- No handling for malformed CSV rows
-- Assumes all icons specified in CSV have corresponding generator functions (will error if missing)
-- QR generation will proceed even with empty URLs (may produce blank/minimal QR)
+If any part of the repo or a workflow is unclear, tell me which file or behavior you want clarified and I will expand this doc or add inline comments in the code.
