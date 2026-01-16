@@ -64,6 +64,9 @@ SIDE_ICON_GENERATORS: dict[str, Callable] = {
     "socket": shape_gen.cap_head_side,
     "shcs": shape_gen.cap_head_side,
     "hex": shape_gen.hex_head_side,
+    "countersink": shape_gen.flush_head_side,
+    "cs": shape_gen.flush_head_side,
+    "fush": shape_gen.flush_head_side,
     "wood_screw": shape_gen.wood_screw_side,
 }
 
@@ -124,12 +127,20 @@ xprint = print  # backup the normal print function
 
 def debug(msg: str, *args, **kwargs) -> None:
     if LOG_LEVEL <= LogLevel.DEBUG:
-        xprint(f"{colorama.Fore.BLUE}[DEBUG] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
+        xprint(
+            f"{colorama.Fore.BLUE}[DEBUG] {msg}{colorama.Style.RESET_ALL}",
+            *args,
+            **kwargs,
+        )
 
 
 def info(msg: str, *args, **kwargs) -> None:
     if LOG_LEVEL <= LogLevel.INFO:
-        xprint(f"{colorama.Fore.GREEN}[INFO ] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
+        xprint(
+            f"{colorama.Fore.GREEN}[INFO ] {msg}{colorama.Style.RESET_ALL}",
+            *args,
+            **kwargs,
+        )
 
 
 def print(msg: str, *args, **kwargs) -> None:
@@ -139,14 +150,22 @@ def print(msg: str, *args, **kwargs) -> None:
 
 def warn(msg: str, *args, **kwargs) -> None:
     if LOG_LEVEL <= LogLevel.WARNING:
-        xprint(f"{colorama.Fore.YELLOW}[WARN ] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
+        xprint(
+            f"{colorama.Fore.YELLOW}[WARN ] {msg}{colorama.Style.RESET_ALL}",
+            *args,
+            **kwargs,
+        )
 
 
 def error(msg: str, *args, **kwargs) -> None:
     if LOG_LEVEL <= LogLevel.ERROR:
         if "file" not in kwargs:
             kwargs["file"] = sys.stderr
-        xprint(f"{colorama.Fore.RED}[ERROR] {msg}{colorama.Style.RESET_ALL}", *args, **kwargs)
+        xprint(
+            f"{colorama.Fore.RED}[ERROR] {msg}{colorama.Style.RESET_ALL}",
+            *args,
+            **kwargs,
+        )
 
 
 # Program code
@@ -219,7 +238,11 @@ def mm_to_px(mm: float) -> int:
 
 
 def generate_labels(
-    csv_path: Path, template_file: Path, output_dir: Path, qr_type: str = "micro", output_format: str = "png"
+    csv_path: Path,
+    template_file: Path,
+    output_dir: Path,
+    qr_type: str = "micro",
+    output_format: str = "png",
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     template = read_template(template_file)
@@ -356,4 +379,10 @@ if __name__ == "__main__":
         error(f"Template file '{args.template_file}' does not exist.")
         exit(1)
 
-    generate_labels(args.csv_file, args.template_file, args.output_dir, qr_type=args.qr_type, output_format=args.format)
+    generate_labels(
+        args.csv_file,
+        args.template_file,
+        args.output_dir,
+        qr_type=args.qr_type,
+        output_format=args.format,
+    )
