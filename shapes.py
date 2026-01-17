@@ -42,17 +42,15 @@ def polygon_points(
     flat_to_flat: float,
     cx: float = 50,
     cy: float = 50,
-    rotation_deg: float | None = None,
+    rotation_deg: float = 0,
 ) -> str:
     """Return a string of x,y points for an n-sided regular polygon sized by flat-to-flat distance.
 
     - flat_to_flat is the distance between opposite parallel sides (apothem*2).
     - cx, cy specify the center point of the polygon.
-    - rotation_deg specifies the rotation of the polygon in degrees. If None, defaults to -180/n to have a flat side at
-      the top.
+    - rotation_deg specifies the rotation of the polygon in degrees. Defaults to 0.
     """
-    if rotation_deg is None:
-        rotation_deg = -180.0 / n
+
     # circumradius R from flat-to-flat (2 * apothem = flat_to_flat), apothem = R * cos(pi/n)
     R = flat_to_flat / (2 * math.cos(math.pi / n))
     pts = []
@@ -159,7 +157,7 @@ def nut_hex_top(flat_to_flat: float, color="#000000") -> str:
     A hexagon with a circular hole in the center
     """
     # compute polygon points using helper
-    points_str = polygon_points(6, flat_to_flat, rotation_deg=0)
+    points_str = polygon_points(6, flat_to_flat)
     hole_radius = flat_to_flat / 4
     return f"""
     <polygon {points_str} fill="{color}" />
@@ -397,6 +395,7 @@ def washer_star_outer_top(diameter: float = 80) -> str:
 
 @icon_generator("top", names=["nut_standard", "nut"])
 def nut_standard_top(diameter: float = 80) -> str:
+    """Standard hex nut, top view"""
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         {nut_hex_top(diameter)}
@@ -406,6 +405,7 @@ def nut_standard_top(diameter: float = 80) -> str:
 
 @icon_generator("side", names=["nut_standard", "nut"])
 def nut_standard_side(diameter: float = 80) -> str:
+    """Standard hex nut, side view"""
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         {nut_hex_side(30, diameter)}
@@ -415,7 +415,7 @@ def nut_standard_side(diameter: float = 80) -> str:
 
 @icon_generator("top", names=["nut_thin", "thin_nut"])
 def nut_thin_top(diameter: float = 80) -> str:
-    # Thinner nut (smaller across-flats)
+    """Thinner nut (smaller across-flats)"""
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         {nut_hex_top(diameter)}
@@ -425,6 +425,7 @@ def nut_thin_top(diameter: float = 80) -> str:
 
 @icon_generator("side", names=["nut_thin", "thin_nut"])
 def nut_thin_side(diameter: float = 80) -> str:
+    """Thinner nut (smaller across-flats) side view"""
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         {nut_hex_side(30, diameter)}
@@ -434,7 +435,7 @@ def nut_thin_side(diameter: float = 80) -> str:
 
 @icon_generator("top", names=["nut_lock", "nyloc"])
 def nut_lock_top(diameter: float = 80) -> str:
-    # Nyloc style: hex with a filled smaller ring (representing nylon insert)
+    """Nyloc style: hex with a filled smaller ring (representing nylon insert)"""
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         {nut_hex_top(diameter)}
@@ -445,7 +446,7 @@ def nut_lock_top(diameter: float = 80) -> str:
 
 @icon_generator("side", names=["nut_lock", "nyloc"])
 def nut_lock_side(diameter: float = 80) -> str:
-    # Side view with a thin band on the top to indicate nylon insert
+    """Side view with a thin band on the top to indicate nylon insert"""
     thickness = 30
     radius = diameter * 0.5
     return f"""
@@ -458,8 +459,10 @@ def nut_lock_side(diameter: float = 80) -> str:
 
 @icon_generator("top", names=["nut_flange", "flange_nut"])
 def nut_flange_top(diameter: float = 80) -> str:
-    # Flange nut: hex centered on a larger disk (simple rendering)
-    # Draw a dark flange disk with a black hexagon and central hole
+    """Flange nut:
+    hex centered on a larger disk (simple rendering)
+    Draw a dark flange disk with a black hexagon and central hole
+    """
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         <circle cx="50" cy="50" r="{diameter*0.6}" fill="#000000" />
@@ -471,7 +474,7 @@ def nut_flange_top(diameter: float = 80) -> str:
 
 @icon_generator("side", names=["nut_flange", "flange_nut"])
 def nut_flange_side(diameter: float = 80) -> str:
-    # Side view with a flange plate at the base
+    """Side view with a flange plate at the base"""
     thickness = 30
     flange_diameter = diameter * 1.2
     flange_thickness = thickness * 0.4
@@ -485,8 +488,9 @@ def nut_flange_side(diameter: float = 80) -> str:
 
 @icon_generator("top", names=["nut_cap", "cap_nut", "acorn", "acorn_nut"])
 def nut_cap_top(diameter: float = 80) -> str:
-    # Cap (acorn) nut: circular dome on top of hex
-    pts = polygon_points(6, diameter)
+    """Cap (acorn) nut
+    circular dome on top of hex"""
+    pts = polygon_points(6, diameter, rotation_deg=0)
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         <polygon {pts} fill="#000000" />
@@ -498,7 +502,8 @@ def nut_cap_top(diameter: float = 80) -> str:
 
 @icon_generator("side", names=["nut_cap", "cap_nut", "acorn", "acorn_nut"])
 def nut_cap_side(diameter: float = 80) -> str:
-    # Dome on the side of hex profile
+    """Cap (acorn) nut side
+    Dome on the side of hex profile"""
     thickness = 20
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
@@ -637,7 +642,9 @@ def insert_heat_side(diameter: float = 80, length: float = 60) -> str:
 
 @icon_generator("top", names=["insert_wood", "wood_insert"])
 def insert_wood_top(diameter: float = 80) -> str:
-    # Wood insert: circle with radial serrations (teeth)
+    """Wood insert:
+    circle with radial serrations (teeth)
+    """
     teeth = "".join(
         [
             f'<rect x="{50}" y="{50 + diameter*0.4}" width="{diameter*0.1}" height="{diameter*0.1}" transform="rotate({i*360/12} 50 50)" fill="#ffffff"/>'
@@ -655,9 +662,10 @@ def insert_wood_top(diameter: float = 80) -> str:
 
 @icon_generator("side", names=["insert_wood", "wood_insert"])
 def insert_wood_side(diameter: float = 60) -> str:
-    # Side view: vertical cylinder with diagonal notches representing serrations
-    # Each notch is a short diagonal line across the cylinder
-    # At the bottom of the cylinder, there should be a trapezoid to indicate the pointed tip
+    """Side view: vertical cylinder with diagonal notches representing serrations
+    Each notch is a short diagonal line across the cylinder
+    At the bottom of the cylinder, there should be a trapezoid to indicate the pointed tip
+    """
     thread_spacing = 8
     radius = diameter / 2
     threads = "".join(
@@ -681,7 +689,7 @@ def insert_wood_side(diameter: float = 60) -> str:
 
 @icon_generator("side", names=["insert_press", "press_insert"])
 def insert_press_side(diameter: float = 60) -> str:
-    # Side view - vertical cylinder narrowed body. The top and bottom have vertical white lines across them, indicating grooves.
+    """Side view - vertical cylinder narrowed body. The top and bottom have vertical white lines across them, indicating grooves."""
     radius = diameter / 2
     height = diameter * 1.2
     section_height = height * 0.25
