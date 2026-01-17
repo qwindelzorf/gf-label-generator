@@ -54,12 +54,12 @@ def star(lobes: int, outer_radius: float, inner_radius: float) -> str:
     return path
 
 
-def annulus(outer_radius: float, inner_radius: float) -> str:
+def annulus(outer_radius: float, inner_radius: float, color="#000000") -> str:
     """Generic annulus shape
     a ring with given outer and inner radii.
     """
     return f"""
-    <circle cx="50" cy="50" r="{outer_radius}" fill="#000000" />
+    <circle cx="50" cy="50" r="{outer_radius}" fill="{color}" />
     <circle cx="50" cy="50" r="{inner_radius}" fill="#FFFFFF" />
     """
 
@@ -282,8 +282,7 @@ def washer_split_side(diameter: float = 80) -> str:
     thickness = diameter / 10
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
-        <path d="M {(100-thickness)/2} {(100-outer_diameter)/2+5} Q {(100-thickness)/2-5} {50-5} {(100-thickness)/2} {50} Q {(100-thickness)/2+5} {50+5} {(100-thickness)/2} {(100+outer_diameter)/2-5}"
-              stroke="#000000" stroke-width="{thickness}" fill="none"/>
+        <path d="M {(100-thickness)/2} {(100-outer_diameter)/2+5} Q {(100-thickness)/2-5} {50-5} {(100-thickness)/2} {50} Q {(100-thickness)/2+5} {50+5} {(100-thickness)/2} {(100+outer_diameter)/2-5}" stroke="#000000" stroke-width="{thickness}" fill="none"/>
         <line x2="{(100-thickness)/2 - 10}" y1="{(100-inner_diameter)/2}" x1="{(100+thickness)/2 + 10}" y2="{(100+inner_diameter)/2}" stroke="#FFFFFF" stroke-width="{thickness}"/>
     </svg>
     """
@@ -318,11 +317,12 @@ def washer_star_inner_top(diameter: float = 80) -> str:
     """
     outer_radius = diameter * 0.5
     inner_radius = outer_radius * 0.5
-    teeth = star(12, outer_radius * 0.8, inner_radius)
+    teeth = star(12, outer_radius * 0.8, inner_radius * 0.8)
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         {annulus(outer_radius, inner_radius)}
         <path {teeth} fill="#FFFFFF"/>
+        <circle cx="50" cy="50" r="{inner_radius*1.1}" fill="#FFFFFF"/>
     </svg>
     """
 
@@ -338,13 +338,14 @@ def washer_star_outer_top(diameter: float = 80) -> str:
     """External star washer, top view.
     A ring with external teeth.
     """
-    outer_radius = diameter * 0.5
-    inner_radius = outer_radius * 0.6
-    teeth = star(12, diameter * 0.7, diameter * 0.4)
+    outer_radius = diameter * 0.4
+    inner_radius = outer_radius * 0.7
+    teeth = star(12, outer_radius * 1.3, inner_radius)
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         <path {teeth} fill="#000000"/>
-        {annulus(outer_radius, inner_radius)}
+        <circle cx="50" cy="50" r="{outer_radius}" fill="#000000"/>
+        <circle cx="50" cy="50" r="{inner_radius}" fill="#FFFFFF"/>
     </svg>
     """
 
@@ -434,11 +435,12 @@ def nut_flange_side(diameter: float = 80) -> str:
 
 def nut_cap_top(diameter: float = 80) -> str:
     # Cap (acorn) nut: circular dome on top of hex
-    pts = polygon_points(6, diameter * 0.5)
+    pts = polygon_points(6, diameter)
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
-        {nut_hex_top(diameter)}
-        <circle cx="50" cy="50" r="{diameter * 0.20}" fill="#000000" />
+        <polygon {pts} fill="#000000" />
+        <circle cx="50" cy="50" r="{diameter * 0.4}" fill="#FFFFFF" />
+        <circle cx="50" cy="50" r="{diameter * 0.35}" fill="#000000" />
     </svg>
     """
 
@@ -449,12 +451,13 @@ def nut_cap_side(diameter: float = 80) -> str:
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
         <!--dome-->
-        <ellipse cx="50" cy="50" rx="{diameter * 0.35}" ry="{diameter * 0.35}" fill="#000000" />
+        <ellipse cx="50" cy="50" rx="{diameter * 0.4}" ry="{diameter * 0.4}" fill="#000000" />
         <!--white rectangle to cut off the left side of the dome-->
         <rect x="0" y="0" height="100" width="50" fill="#FFFFFF" />
 
         <!--hex body-->
         <rect x="{(100) / 2 - thickness}" y="{(100 - diameter) / 2}" width="{thickness}" height="{diameter}" fill="#000000" />
+        <rect x="{50}" y="{0}" width="{thickness*0.2}" height="{100}" fill="#FFFFFF" />
     </svg>
     """
 
@@ -599,7 +602,7 @@ def insert_wood_side(diameter: float = 60) -> str:
     # At the bottom of the cylinder, there should be a trapezoid to indicate the pointed tip
     thread_spacing = 8
     radius = diameter / 2
-    notches = "".join(
+    threads = "".join(
         [
             f'<line x1="{50-radius}" y1="{30 + i * thread_spacing}" x2="{50+radius}" y2="{30 + i * thread_spacing - radius * 0.4}" stroke="#FFFFFF" stroke-width="2"/>'
             for i in range(7)
@@ -612,7 +615,8 @@ def insert_wood_side(diameter: float = 60) -> str:
         <!--tapered tip-->
         <path d="M {50-radius} {70} L {50+radius} {70} L {50+radius*0.7} {90} L {50-radius*0.7} {90} Z" fill="#000000" />
         <!--notches-->
-        {notches}
+        {threads}
+        <rect x="{45}" y="{25}" width="{10}" height="{15}" fill="#FFFFFF" />
     </svg>
     """
 
