@@ -761,3 +761,100 @@ def head_pozidriv_top(diameter: float = 80) -> str:
         {slot(width = 5, length = 50, angle = -45)}
     </svg>
     """
+
+
+## Bearings ##
+
+
+def bearing_side(outer_diameter: float = 80, inner_diameter: float = 30) -> str:
+    """Bearing, side view
+    A circle with an inner ring representing the bearing
+    """
+    thickness = outer_diameter / 3
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <rect x="{(100 - thickness) / 2}" y="{(100 - outer_diameter) / 2}" width="{thickness}" height="{outer_diameter}" fill="#000000" />
+        <rect x="{(100 - thickness) / 2}" y="{(100 - inner_diameter) / 2}" width="{thickness}" height="{inner_diameter}" fill="#FFFFFF" />
+    </svg>
+    """
+
+
+def bearing_flange_side(outer_diameter: float = 80, inner_diameter: float = 30) -> str:
+    """Bearing with flange, side view
+    A circle with an outer flange and an inner ring representing the bearing
+    """
+    thickness = outer_diameter / 3
+    flange_diameter = outer_diameter * 1.2
+    flange_height = (flange_diameter - outer_diameter) / 2
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <rect x="{(100 - thickness) / 2}" y="{(100 - outer_diameter) / 2}" width="{thickness}" height="{outer_diameter}" fill="#000000" />
+        <rect x="{(100 - thickness) / 2}" y="{(100 - flange_diameter) / 2}" width="{flange_height}" height="{flange_diameter}" fill="#000000" />
+        <rect x="{(100 - thickness) / 2}" y="{(100 - inner_diameter) / 2}" width="{thickness}" height="{inner_diameter}" fill="#FFFFFF" />
+    </svg>
+    """
+
+
+def bearing_top(outer_diameter: float = 80, inner_diameter: float = 30) -> str:
+    """Bearing, top view
+    A circle with an inner ring representing the bearing
+    """
+    outer_radius = outer_diameter * 0.5
+    inner_radius = inner_diameter * 0.5
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{outer_radius}" fill="#000000" />
+        <circle cx="50" cy="50" r="{outer_radius*0.8}" fill="#FFFFFF" />
+        <circle cx="50" cy="50" r="{inner_radius*1.2}" fill="#000000" />
+        <circle cx="50" cy="50" r="{inner_radius}" fill="#FFFFFF" />
+    </svg>
+    """
+
+
+## Springs ##
+
+
+def spring_side(diameter: float = 40, length: float = 60) -> str:
+    """Spring, side view
+    A vertical line, several diagonal lines representing the coils, and a final vertical line
+    """
+    start_y = (100 - length) / 2
+    end_y = start_y + length
+    start_x = (100 - diameter) / 2
+    end_x = start_x + diameter
+    num_coils = 7
+    coil_spacing = diameter * 2 / (num_coils)
+
+    lines = []
+    for i in range(num_coils):
+        y = start_y + i * coil_spacing
+        if y + coil_spacing > end_y:
+            if y < end_y:
+                lines.append(
+                    f'<line x1="{start_x}" y1="{y}" x2="{end_x}" y2="{end_y}" stroke="#000000" stroke-width="5" />'
+                )
+            break
+        lines.append(
+            f'<line x1="{start_x}" y1="{y}" x2="{end_x}" y2="{y + coil_spacing}" stroke="#000000" stroke-width="5" />'
+        )
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <line x1="{start_x}" y1="{start_y}" x2="{end_x}" y2="{start_y}" stroke="#000000" stroke-width="8" />
+        <line x1="{start_x}" y1="{end_y}" x2="{end_x}" y2="{end_y}" stroke="#000000" stroke-width="8" />
+        {''.join(lines)}
+    </svg>
+    """
+
+
+def spring_top(diameter: float = 80) -> str:
+    """Spring, top view
+    A slim annular ring
+    """
+    outer_radius = diameter * 0.5
+    coil_radius = diameter * 0.35
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="{outer_radius}" fill="#000000" />
+        <circle cx="50" cy="50" r="{coil_radius}" fill="#FFFFFF" />
+    </svg>
+    """
