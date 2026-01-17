@@ -404,6 +404,104 @@ class TestHeadGenerators:
         assert result.count("<rect") == 4  # cross plus angled bars
 
 
+class TestBearingGenerators:
+    """Test bearing-related shape generators."""
+
+    def test_bearing_side(self):
+        """Test bearing side view."""
+        result = shapes.bearing_side()
+        assert "<svg" in result
+        assert "</svg>" in result
+        assert "viewBox=" in result
+        assert "<rect" in result
+        assert result.count("<rect") == 2  # outer and inner rings
+
+    def test_bearing_side_custom_dimensions(self):
+        """Test bearing side view with custom dimensions."""
+        result = shapes.bearing_side(outer_diameter=100, inner_diameter=40)
+        assert "<svg" in result
+        assert "<rect" in result
+
+    def test_bearing_flange_side(self):
+        """Test bearing with flange side view."""
+        result = shapes.bearing_flange_side()
+        assert "<svg" in result
+        assert "</svg>" in result
+        assert "viewBox=" in result
+        assert "<rect" in result
+        assert result.count("<rect") == 3  # main body, flange, and inner ring
+
+    def test_bearing_flange_side_custom_dimensions(self):
+        """Test bearing with flange side view with custom dimensions."""
+        result = shapes.bearing_flange_side(outer_diameter=90, inner_diameter=35)
+        assert "<svg" in result
+        assert "<rect" in result
+
+    def test_bearing_top(self):
+        """Test bearing top view."""
+        result = shapes.bearing_top()
+        assert "<svg" in result
+        assert "</svg>" in result
+        assert "viewBox=" in result
+        assert "<circle" in result
+        assert result.count("<circle") == 4  # outer, middle, and inner rings with center
+
+    def test_bearing_top_custom_dimensions(self):
+        """Test bearing top view with custom dimensions."""
+        result = shapes.bearing_top(outer_diameter=100, inner_diameter=50)
+        assert "<svg" in result
+        assert "<circle" in result
+        assert result.count("<circle") == 4
+
+
+class TestSpringGenerators:
+    """Test spring-related shape generators."""
+
+    def test_spring_side(self):
+        """Test spring side view."""
+        result = shapes.spring_side()
+        assert "<svg" in result
+        assert "</svg>" in result
+        assert "viewBox=" in result
+        assert "<line" in result
+        # Should have at least one horizontal line at top and bottom, plus diagonal coil lines
+        assert result.count("<line") >= 8  # top, bottom, and 6+ coil lines
+
+    def test_spring_side_custom_diameter(self):
+        """Test spring side view with custom diameter."""
+        result = shapes.spring_side(diameter=50, length=70)
+        assert "<svg" in result
+        assert "<line" in result
+
+    def test_spring_side_custom_length(self):
+        """Test spring side view with custom length."""
+        result = shapes.spring_side(diameter=35, length=80)
+        assert "<svg" in result
+        assert "<line" in result
+
+    def test_spring_side_stroke_width(self):
+        """Test spring side view has appropriate stroke widths."""
+        result = shapes.spring_side()
+        assert 'stroke-width="8"' in result  # horizontal end lines
+        assert 'stroke-width="5"' in result  # coil lines
+
+    def test_spring_top(self):
+        """Test spring top view."""
+        result = shapes.spring_top()
+        assert "<svg" in result
+        assert "</svg>" in result
+        assert "viewBox=" in result
+        assert "<circle" in result
+        assert result.count("<circle") == 2  # outer and inner circles (annulus)
+
+    def test_spring_top_custom_diameter(self):
+        """Test spring top view with custom diameter."""
+        result = shapes.spring_top(diameter=100)
+        assert "<svg" in result
+        assert "<circle" in result
+        assert result.count("<circle") == 2
+
+
 class TestSVGValidity:
     """Test that generated SVGs are valid and well-formed."""
 
@@ -449,6 +547,11 @@ class TestSVGValidity:
             shapes.head_phillips_top,
             shapes.head_square_top,
             shapes.head_pozidriv_top,
+            shapes.bearing_side,
+            shapes.bearing_flange_side,
+            shapes.bearing_top,
+            shapes.spring_side,
+            shapes.spring_top,
         ]
 
         for gen in generators:
