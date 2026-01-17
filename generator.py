@@ -17,7 +17,6 @@ import argparse
 import io
 from pathlib import Path
 import sys
-from typing import Callable
 from urllib.parse import quote
 import segno
 from jinja2 import Template
@@ -25,101 +24,12 @@ import cairosvg
 import colorama
 import requests
 
-import shapes as shape_gen
+import shapes
 
 # Configuration
 LABEL_WIDTH_MM = 36
 LABEL_HEIGHT_MM = 8.9  # should be 9mm, but leave some margin
 LABEL_PRINTER_DPI = 150  # for Brother P710BT label printer
-
-
-# Icon generator functions - split into side and top view registries
-# Each function receives a dict with row data from CSV
-SIDE_ICON_GENERATORS: dict[str, Callable] = {
-    "washer": shape_gen.washer_std_side,
-    "washer_flat": shape_gen.washer_std_side,
-    "washer_fender": shape_gen.washer_fender_side,
-    "washer_split": shape_gen.washer_split_side,
-    "split": shape_gen.washer_split_side,
-    "star_i": shape_gen.washer_star_inner_side,
-    "star_inner": shape_gen.washer_star_inner_side,
-    "washer_star_inner": shape_gen.washer_star_inner_side,
-    "star": shape_gen.washer_star_outer_side,
-    "star_o": shape_gen.washer_star_outer_side,
-    "star_outer": shape_gen.washer_star_outer_side,
-    "washer_star": shape_gen.washer_star_outer_side,
-    "washer_star_outer": shape_gen.washer_star_outer_side,
-    "nut": shape_gen.nut_standard_side,
-    "nut_standard": shape_gen.nut_standard_side,
-    "nut_thin": shape_gen.nut_thin_side,
-    "nut_lock": shape_gen.nut_lock_side,
-    "nyloc": shape_gen.nut_lock_side,
-    "nut_nyloc": shape_gen.nut_lock_side,
-    "nut_flange": shape_gen.nut_flange_side,
-    "nut_cap": shape_gen.nut_cap_side,
-    "nut_acorn": shape_gen.nut_cap_side,
-    "nut_wing": shape_gen.nut_wing_side,
-    "wing": shape_gen.nut_wing_side,
-    "insert_heat": shape_gen.insert_heat_side,
-    "insert_wood": shape_gen.insert_wood_side,
-    "insert_press": shape_gen.insert_press_side,
-    "button": shape_gen.button_head_side,
-    "bhcs": shape_gen.button_head_side,
-    "socket": shape_gen.cap_head_side,
-    "shcs": shape_gen.cap_head_side,
-    "hex": shape_gen.hex_head_side,
-    "countersink": shape_gen.flush_head_side,
-    "cs": shape_gen.flush_head_side,
-    "flush": shape_gen.flush_head_side,
-    "wood_screw": shape_gen.wood_screw_side,
-    "bearing": shape_gen.bearing_side,
-    "bearing_flange": shape_gen.bearing_flange_side,
-    "spring": shape_gen.spring_side,
-    "coil_spring": shape_gen.spring_side,
-}
-
-TOP_ICON_GENERATORS: dict[str, Callable] = {
-    "washer": shape_gen.washer_std_top,
-    "washer_flat": shape_gen.washer_std_top,
-    "washer_fender": shape_gen.washer_fender_top,
-    "washer_split": shape_gen.washer_split_top,
-    "split": shape_gen.washer_split_top,
-    "star": shape_gen.washer_star_outer_top,
-    "star_o": shape_gen.washer_star_outer_top,
-    "star_outer": shape_gen.washer_star_outer_top,
-    "washer_star": shape_gen.washer_star_outer_top,
-    "washer_star_outer": shape_gen.washer_star_outer_top,
-    "star_i": shape_gen.washer_star_inner_top,
-    "star_inner": shape_gen.washer_star_inner_top,
-    "washer_star_inner": shape_gen.washer_star_inner_top,
-    "nut": shape_gen.nut_standard_top,
-    "nut_standard": shape_gen.nut_standard_top,
-    "nut_thin": shape_gen.nut_thin_top,
-    "nut_lock": shape_gen.nut_lock_top,
-    "nyloc": shape_gen.nut_lock_top,
-    "nut_nyloc": shape_gen.nut_lock_top,
-    "nut_flange": shape_gen.nut_flange_top,
-    "nut_cap": shape_gen.nut_cap_top,
-    "nut_acorn": shape_gen.nut_cap_top,
-    "nut_wing": shape_gen.nut_wing_top,
-    "wing": shape_gen.nut_wing_top,
-    "insert_heat": shape_gen.insert_heat_top,
-    "insert_wood": shape_gen.insert_wood_top,
-    "insert_press": shape_gen.insert_wood_top,  # same as wood insert top
-    "hex": shape_gen.head_hex_top,
-    "socket": shape_gen.head_socket_top,
-    "cap": shape_gen.head_socket_top,
-    "torx": shape_gen.head_torx_top,
-    "slotted": shape_gen.head_slotted_top,
-    "flat": shape_gen.head_slotted_top,
-    "phillips": shape_gen.head_phillips_top,
-    "square": shape_gen.head_square_top,
-    "pozidriv": shape_gen.head_pozidriv_top,
-    "pozi": shape_gen.head_pozidriv_top,
-    "bearing": shape_gen.bearing_top,
-    "spring": shape_gen.spring_top,
-    "coil_spring": shape_gen.spring_top,
-}
 
 
 # simple logging functions
@@ -403,7 +313,7 @@ def generate_labels(
         # Load icons by stem name (print red error if generator missing)
         top_icon = ""
         if top_symbol:
-            top_gen = TOP_ICON_GENERATORS.get(top_symbol)
+            top_gen = shapes.IconRegistry.top_generators.get(top_symbol)
             if top_gen is None:
                 error(f"top icon generator not found for '{top_symbol}'")
             else:
@@ -411,7 +321,7 @@ def generate_labels(
 
         side_icon = ""
         if side_symbol:
-            side_gen = SIDE_ICON_GENERATORS.get(side_symbol)
+            side_gen = shapes.IconRegistry.side_generators.get(side_symbol)
             if side_gen is None:
                 error(f"side icon generator not found for '{side_symbol}'")
             else:

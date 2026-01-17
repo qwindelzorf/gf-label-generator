@@ -4,8 +4,34 @@ Each function generates SVG content for various fastener components.
 Shapes are assumed to fit within a 100x100 viewbox unless otherwise specified.
 """
 
-from importlib.resources import path
 import math
+from typing import Callable
+
+
+class IconRegistry:
+    top_generators: dict[str, Callable[..., str]] = {}
+    side_generators: dict[str, Callable[..., str]] = {}
+
+
+def icon_generator(which: str, names: list[str]):
+    """Decorator to register icon generator functions."""
+    match which:
+        case "top":
+            registry = IconRegistry.top_generators
+        case "side":
+            registry = IconRegistry.side_generators
+        case _:
+            raise ValueError(f"Unknown icon registry: {which}")
+
+    def decorator(func: Callable[..., str]):
+        for name in names:
+            name_lower = name.lower()
+            if name_lower in registry:
+                raise ValueError(f"Icon generator for {name_lower} already registered in {which} registry")
+            registry[name_lower] = func
+        return func
+
+    return decorator
 
 
 ## Generic shape components ##
@@ -20,9 +46,10 @@ def polygon_points(
 ) -> str:
     """Return a string of x,y points for an n-sided regular polygon sized by flat-to-flat distance.
 
-    flat_to_flat is the distance between opposite parallel sides (apothem*2).
-    cx, cy specify the center point of the polygon.
-    rotation_deg specifies the rotation of the polygon in degrees. If None, defaults to -180/n to have a flat side at the top.
+    - flat_to_flat is the distance between opposite parallel sides (apothem*2).
+    - cx, cy specify the center point of the polygon.
+    - rotation_deg specifies the rotation of the polygon in degrees. If None, defaults to -180/n to have a flat side at
+      the top.
     """
     if rotation_deg is None:
         rotation_deg = -180.0 / n
@@ -154,6 +181,7 @@ def nut_hex_side(thickness: float, flat_to_flat: float, color="#000000") -> str:
 ## Screws ##
 
 
+@icon_generator("side", names=["button_head", "button"])
 def button_head_side() -> str:
     """Button head cap screw, side view.
     A vertical rectangle (shaft) with a flattened semi-circle on top, flat side down (head).
@@ -170,6 +198,7 @@ def button_head_side() -> str:
     """
 
 
+@icon_generator("side", names=["cap_head", "cap"])
 def cap_head_side() -> str:
     """Socket head cap screw, side view.
     A vertical rectangle (shaft) with a rounded rectangle on top (head).
@@ -186,6 +215,7 @@ def cap_head_side() -> str:
     """
 
 
+@icon_generator("side", names=["hex_head", "hex", "bolt"])
 def hex_head_side() -> str:
     """Hex head screw, side view.
     A vertical rectangle (shaft) with a hexagonal prism on top (head).
@@ -202,6 +232,7 @@ def hex_head_side() -> str:
     """
 
 
+@icon_generator("side", names=["flush_head", "flat_head", "flat", "countersunk"])
 def flush_head_side() -> str:
     """Flat head screw, side view.
     A vertical rectangle (shaft) with a countersunk triangle on top (head).
@@ -217,6 +248,7 @@ def flush_head_side() -> str:
     """
 
 
+@icon_generator("side", names=["wood_screw", "wood"])
 def wood_screw_side() -> str:
     """Wood screw, side view.
     A vertical rectangle (shaft) with a pointed tip and a countersunk head on top.
@@ -235,6 +267,7 @@ def wood_screw_side() -> str:
 ## Washers ##
 
 
+@icon_generator("side", names=["washer_std", "washer"])
 def washer_std_side(outer_diameter: float = 80, inner_diameter: float = 35) -> str:
     """Flat washer, side view (vertical orientation).
     A thin rectangle with a hole in the center.
@@ -248,6 +281,7 @@ def washer_std_side(outer_diameter: float = 80, inner_diameter: float = 35) -> s
     """
 
 
+@icon_generator("top", names=["washer_std", "washer"])
 def washer_std_top(outer_diameter: float = 80, inner_diameter: float = 35) -> str:
     """Flat washer, top view.
     A ring (circle with a hole in the center).
@@ -259,6 +293,7 @@ def washer_std_top(outer_diameter: float = 80, inner_diameter: float = 35) -> st
     """
 
 
+@icon_generator("side", names=["washer_fender", "fender"])
 def washer_fender_side(diameter: float = 80) -> str:
     """Fender washer, side view (vertical orientation).
     A thin rectangle with a small hole in the center.
@@ -266,6 +301,7 @@ def washer_fender_side(diameter: float = 80) -> str:
     return washer_std_side(diameter, diameter / 3.0)
 
 
+@icon_generator("top", names=["washer_fender", "fender"])
 def washer_fender_top(diameter: float = 80) -> str:
     """Fender washer, top view.
     A ring with large OD and small ID.
@@ -273,6 +309,7 @@ def washer_fender_top(diameter: float = 80) -> str:
     return washer_std_top(diameter, diameter / 3.0)
 
 
+@icon_generator("side", names=["washer_split", "split"])
 def washer_split_side(diameter: float = 80) -> str:
     """Split lock washer, side view.
     A thin helix-like shape, with a white line diagonally across the middle to indicate the split.
@@ -288,6 +325,7 @@ def washer_split_side(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["washer_split", "split"])
 def washer_split_top(diameter: float = 80) -> str:
     """Split lock washer, top view.
     An annular ring with a gap on one side to indicate the split.
@@ -304,6 +342,7 @@ def washer_split_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("side", names=["washer_star_inner", "star_inner"])
 def washer_star_inner_side(diameter: float = 80) -> str:
     """Internal star washer, side view.
     Similar to standard washer with teeth indication.
@@ -311,6 +350,7 @@ def washer_star_inner_side(diameter: float = 80) -> str:
     return washer_std_side(diameter, diameter / 2)
 
 
+@icon_generator("top", names=["washer_star_inner", "star_inner"])
 def washer_star_inner_top(diameter: float = 80) -> str:
     """Internal star washer, top view.
     A ring with internal teeth.
@@ -327,6 +367,7 @@ def washer_star_inner_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("side", names=["washer_star_outer", "star_outer"])
 def washer_star_outer_side(diameter: float = 80) -> str:
     """External star washer, side view.
     Similar to standard washer with outer teeth indication.
@@ -334,6 +375,7 @@ def washer_star_outer_side(diameter: float = 80) -> str:
     return washer_std_side(diameter, diameter / 2)
 
 
+@icon_generator("top", names=["washer_star_outer", "star_outer"])
 def washer_star_outer_top(diameter: float = 80) -> str:
     """External star washer, top view.
     A ring with external teeth.
@@ -353,6 +395,7 @@ def washer_star_outer_top(diameter: float = 80) -> str:
 ## Nut generators ##
 
 
+@icon_generator("top", names=["nut_standard", "nut"])
 def nut_standard_top(diameter: float = 80) -> str:
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
@@ -361,6 +404,7 @@ def nut_standard_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("side", names=["nut_standard", "nut"])
 def nut_standard_side(diameter: float = 80) -> str:
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
@@ -369,6 +413,7 @@ def nut_standard_side(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["nut_thin", "thin_nut"])
 def nut_thin_top(diameter: float = 80) -> str:
     # Thinner nut (smaller across-flats)
     return f"""
@@ -378,6 +423,7 @@ def nut_thin_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("side", names=["nut_thin", "thin_nut"])
 def nut_thin_side(diameter: float = 80) -> str:
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
@@ -386,6 +432,7 @@ def nut_thin_side(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["nut_lock", "nyloc"])
 def nut_lock_top(diameter: float = 80) -> str:
     # Nyloc style: hex with a filled smaller ring (representing nylon insert)
     return f"""
@@ -396,6 +443,7 @@ def nut_lock_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("side", names=["nut_lock", "nyloc"])
 def nut_lock_side(diameter: float = 80) -> str:
     # Side view with a thin band on the top to indicate nylon insert
     thickness = 30
@@ -408,6 +456,7 @@ def nut_lock_side(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["nut_flange", "flange_nut"])
 def nut_flange_top(diameter: float = 80) -> str:
     # Flange nut: hex centered on a larger disk (simple rendering)
     # Draw a dark flange disk with a black hexagon and central hole
@@ -420,6 +469,7 @@ def nut_flange_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("side", names=["nut_flange", "flange_nut"])
 def nut_flange_side(diameter: float = 80) -> str:
     # Side view with a flange plate at the base
     thickness = 30
@@ -433,6 +483,7 @@ def nut_flange_side(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["nut_cap", "cap_nut", "acorn", "acorn_nut"])
 def nut_cap_top(diameter: float = 80) -> str:
     # Cap (acorn) nut: circular dome on top of hex
     pts = polygon_points(6, diameter)
@@ -445,6 +496,7 @@ def nut_cap_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("side", names=["nut_cap", "cap_nut", "acorn", "acorn_nut"])
 def nut_cap_side(diameter: float = 80) -> str:
     # Dome on the side of hex profile
     thickness = 20
@@ -462,6 +514,7 @@ def nut_cap_side(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["nut_wing", "wing_nut", "wing"])
 def nut_wing_top(diameter: float = 80) -> str:
     """Wing nut top
     Annular ring with a top and bottom rectangle representing the wings
@@ -478,6 +531,7 @@ def nut_wing_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("side", names=["nut_wing", "wing_nut", "wing"])
 def nut_wing_side(diameter: float = 80) -> str:
     """wing nut side
     a vertical rectangle representing the base, with two polygons for the wings
@@ -503,6 +557,7 @@ def nut_wing_side(diameter: float = 80) -> str:
 ## Insert (threaded/heat/press) generators ##
 
 
+@icon_generator("top", names=["insert_heat", "heat_insert", "heat_set_insert", "hsi"])
 def insert_heat_top(diameter: float = 80) -> str:
     # heat-set insert top - 20 pointed star, with a hole in the center
     points_str = star(20, diameter * 0.6, diameter * 0.5)
@@ -514,6 +569,7 @@ def insert_heat_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("side", names=["insert_heat", "heat_insert", "heat_set_insert", "hsi"])
 def insert_heat_side(diameter: float = 80, length: float = 60) -> str:
     """heat-set insert side - stack of 4 rectangles with hatch lines to indicate knurling.
     1) full witdth, diagonal hatch, 1/3 overall height
@@ -579,6 +635,7 @@ def insert_heat_side(diameter: float = 80, length: float = 60) -> str:
     """
 
 
+@icon_generator("top", names=["insert_wood", "wood_insert"])
 def insert_wood_top(diameter: float = 80) -> str:
     # Wood insert: circle with radial serrations (teeth)
     teeth = "".join(
@@ -596,6 +653,7 @@ def insert_wood_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("side", names=["insert_wood", "wood_insert"])
 def insert_wood_side(diameter: float = 60) -> str:
     # Side view: vertical cylinder with diagonal notches representing serrations
     # Each notch is a short diagonal line across the cylinder
@@ -621,6 +679,7 @@ def insert_wood_side(diameter: float = 60) -> str:
     """
 
 
+@icon_generator("side", names=["insert_press", "press_insert"])
 def insert_press_side(diameter: float = 60) -> str:
     # Side view - vertical cylinder narrowed body. The top and bottom have vertical white lines across them, indicating grooves.
     radius = diameter / 2
@@ -658,6 +717,7 @@ def insert_press_side(diameter: float = 60) -> str:
 ## Head top icons ##
 
 
+@icon_generator("top", names=["head_hex", "hex_head", "hex"])
 def head_hex_top(diameter: float = 80) -> str:
     """Hex head, top view
     A hexagon
@@ -671,6 +731,7 @@ def head_hex_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["head_socket", "socket_head", "socket"])
 def head_socket_top(diameter: float = 80) -> str:
     """Socket Hex head, top view
     A circle with an inner hexagon
@@ -685,6 +746,7 @@ def head_socket_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["head_torx", "torx_head", "torx"])
 def head_torx_top(diameter: float = 80) -> str:
     """Torx head, top view
     A circle with a 6 lobed rounded star shape inside
@@ -699,6 +761,7 @@ def head_torx_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["head_square", "square_head", "square", "robertson", "robertson_head"])
 def head_square_top(diameter: float = 80) -> str:
     """Square drive (aka Robertson) top
     A circle with a square in the center
@@ -721,6 +784,7 @@ def slot(length: float = 75, width: float = 10, angle: float = 0) -> str:
     """
 
 
+@icon_generator("top", names=["head_slotted", "slotted_head", "slotted", "flat_head", "flat"])
 def head_slotted_top(diameter: float = 80) -> str:
     """Slotted head, top view
     A circle with a horizontal bar through it
@@ -734,6 +798,7 @@ def head_slotted_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["head_phillips", "phillips_head", "phillips"])
 def head_phillips_top(diameter: float = 80) -> str:
     """Phillips head, top view
     A circle with a cross through it
@@ -748,6 +813,7 @@ def head_phillips_top(diameter: float = 80) -> str:
     """
 
 
+@icon_generator("top", names=["head_pozidriv", "pozidriv_head", "pozidriv", "pozi"])
 def head_pozidriv_top(diameter: float = 80) -> str:
     """Pozidriv head, top view
     A circle with a cross and additional smaller bars at 45 degree angles
@@ -766,6 +832,7 @@ def head_pozidriv_top(diameter: float = 80) -> str:
 ## Bearings ##
 
 
+@icon_generator("side", names=["bearing"])
 def bearing_side(outer_diameter: float = 80, inner_diameter: float = 30) -> str:
     """Bearing, side view
     A circle with an inner ring representing the bearing
@@ -779,6 +846,7 @@ def bearing_side(outer_diameter: float = 80, inner_diameter: float = 30) -> str:
     """
 
 
+@icon_generator("side", names=["bearing_flange", "flange_bearing"])
 def bearing_flange_side(outer_diameter: float = 80, inner_diameter: float = 30) -> str:
     """Bearing with flange, side view
     A circle with an outer flange and an inner ring representing the bearing
@@ -795,6 +863,7 @@ def bearing_flange_side(outer_diameter: float = 80, inner_diameter: float = 30) 
     """
 
 
+@icon_generator("top", names=["bearing"])
 def bearing_top(outer_diameter: float = 80, inner_diameter: float = 30) -> str:
     """Bearing, top view
     A circle with an inner ring representing the bearing
@@ -814,6 +883,7 @@ def bearing_top(outer_diameter: float = 80, inner_diameter: float = 30) -> str:
 ## Springs ##
 
 
+@icon_generator("side", names=["spring", "coil", "coil_spring"])
 def spring_side(diameter: float = 40, length: float = 60) -> str:
     """Spring, side view
     A vertical line, several diagonal lines representing the coils, and a final vertical line
@@ -846,6 +916,7 @@ def spring_side(diameter: float = 40, length: float = 60) -> str:
     """
 
 
+@icon_generator("top", names=["spring", "coil", "coil_spring"])
 def spring_top(diameter: float = 80) -> str:
     """Spring, top view
     A slim annular ring
