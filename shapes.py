@@ -367,7 +367,7 @@ def washer_star_inner_top(diameter: float = 80) -> str:
     """
 
 
-@icon_generator("side", names=["washer_star_outer", "star_outer"])
+@icon_generator("side", names=["washer_star_outer", "star_outer", "star"])
 def washer_star_outer_side(diameter: float = 80) -> str:
     """External star washer, side view.
     Similar to standard washer with outer teeth indication.
@@ -375,7 +375,7 @@ def washer_star_outer_side(diameter: float = 80) -> str:
     return washer_std_side(diameter, diameter / 2)
 
 
-@icon_generator("top", names=["washer_star_outer", "star_outer"])
+@icon_generator("top", names=["washer_star_outer", "star_outer", "star"])
 def washer_star_outer_top(diameter: float = 80) -> str:
     """External star washer, top view.
     A ring with external teeth.
@@ -554,12 +554,12 @@ def nut_wing_side(diameter: float = 80) -> str:
     """
 
 
-## Insert (threaded/heat/press) generators ##
+## Threaded insert generators ##
 
 
-@icon_generator("top", names=["insert_heat", "heat_insert", "heat_set_insert", "hsi"])
+@icon_generator("top", names=["insert_heat", "heat_insert", "heat_set_insert", "hsi", "heat_set", "insert_press"])
 def insert_heat_top(diameter: float = 80) -> str:
-    # heat-set insert top - 20 pointed star, with a hole in the center
+    """heat-set insert top - 20 pointed star, with a hole in the center"""
     points_str = star(20, diameter * 0.6, diameter * 0.5)
     return f"""
     <svg width="100" height="100" viewBox="0 0 100 100">
@@ -569,7 +569,7 @@ def insert_heat_top(diameter: float = 80) -> str:
     """
 
 
-@icon_generator("side", names=["insert_heat", "heat_insert", "heat_set_insert", "hsi"])
+@icon_generator("side", names=["insert_heat", "heat_insert", "heat_set_insert", "hsi", "heat_set"])
 def insert_heat_side(diameter: float = 80, length: float = 60) -> str:
     """heat-set insert side - stack of 4 rectangles with hatch lines to indicate knurling.
     1) full witdth, diagonal hatch, 1/3 overall height
