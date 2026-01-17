@@ -1,5 +1,5 @@
 from pathlib import Path
-import generator
+import shapes
 
 
 def test_generate_all_icon_svgs():
@@ -16,7 +16,7 @@ def test_generate_all_icon_svgs():
     side_dir.mkdir(parents=True, exist_ok=True)
 
     # Top view generators
-    for name, fn in generator.TOP_ICON_GENERATORS.items():
+    for name, fn in shapes.IconRegistry.top_generators.items():
         svg = fn()
         assert isinstance(svg, str) and svg.strip(), f"Top icon '{name}' returned empty"
         # Basic sanity check that the output contains SVG markup
@@ -24,10 +24,8 @@ def test_generate_all_icon_svgs():
         (top_dir / f"{name}.svg").write_text(svg, encoding="utf-8")
 
     # Side view generators
-    for name, fn in generator.SIDE_ICON_GENERATORS.items():
+    for name, fn in shapes.IconRegistry.side_generators.items():
         svg = fn()
-        assert (
-            isinstance(svg, str) and svg.strip()
-        ), f"Side icon '{name}' returned empty"
+        assert isinstance(svg, str) and svg.strip(), f"Side icon '{name}' returned empty"
         assert "<svg" in svg or "<rect" in svg or "<path" in svg
         (side_dir / f"{name}.svg").write_text(svg, encoding="utf-8")

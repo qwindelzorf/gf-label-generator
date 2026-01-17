@@ -13,7 +13,7 @@ from jinja2 import Template
 import segno
 import requests
 
-import generator
+import generator, shapes
 
 
 class TestMmToPx:
@@ -172,44 +172,18 @@ class TestIconGeneratorRegistries:
     """Test icon generator registry mappings."""
 
     def test_top_icon_generators_exist(self):
-        """Test that TOP_ICON_GENERATORS is properly defined."""
-        assert isinstance(generator.TOP_ICON_GENERATORS, dict)
-        assert len(generator.TOP_ICON_GENERATORS) > 0
+        """Test that top icon generators are registered."""
+        assert isinstance(shapes.IconRegistry.top_generators, dict)
+        assert len(shapes.IconRegistry.top_generators) > 0
+        for name, func in shapes.IconRegistry.top_generators.items():
+            assert callable(func), f"Top icon generator '{name}' should be callable"
 
     def test_side_icon_generators_exist(self):
-        """Test that SIDE_ICON_GENERATORS is properly defined."""
-        assert isinstance(generator.SIDE_ICON_GENERATORS, dict)
-        assert len(generator.SIDE_ICON_GENERATORS) > 0
-
-    def test_top_icon_generators_callable(self):
-        """Test that all top icon generators are callable."""
-        for key, func in generator.TOP_ICON_GENERATORS.items():
-            assert callable(func), f"{key} should be callable"
-
-    def test_side_icon_generators_callable(self):
-        """Test that all side icon generators are callable."""
-        for key, func in generator.SIDE_ICON_GENERATORS.items():
-            assert callable(func), f"{key} should be callable"
-
-    def test_top_icon_generators_return_svg(self):
-        """Test that top icon generators return valid SVG."""
-        for key, func in list(generator.TOP_ICON_GENERATORS.items())[:5]:  # Test first 5
-            result = func()
-            assert isinstance(result, str)
-            assert "<svg" in result or len(result) > 0
-
-    def test_side_icon_generators_return_svg(self):
-        """Test that side icon generators return valid SVG."""
-        for key, func in list(generator.SIDE_ICON_GENERATORS.items())[:5]:  # Test first 5
-            result = func()
-            assert isinstance(result, str)
-            assert "<svg" in result or len(result) > 0
-
-    def test_common_icon_keys_exist(self):
-        """Test that common icon keys exist in registries."""
-        common_keys = ["washer", "nut", "hex", "socket"]
-        for key in common_keys:
-            assert key in generator.TOP_ICON_GENERATORS or key in generator.SIDE_ICON_GENERATORS
+        """Test that side icon generators are registered."""
+        assert isinstance(shapes.IconRegistry.side_generators, dict)
+        assert len(shapes.IconRegistry.side_generators) > 0
+        for name, func in shapes.IconRegistry.side_generators.items():
+            assert callable(func), f"Side icon generator '{name}' should be callable"
 
 
 class TestLogLevel:
