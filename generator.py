@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
+
 """
 Label generator:
-- Reads CSV with columns: name,description,top_symbol,side_symbol,reorder_url
-- Icon paths are automatically constructed as icons/{symbol}.svg
+- Reads spreadsheets (CSV, Excel ".xlsx", Apple Numbers ".numbers", OpenDocument ".ods") with columns:
+  - name
+  - description
+  - top_symbol
+  - side_symbol
+  - reorder_url
 - Generates an SVG label per row by filling a template SVG (template.svg)
 - Creates QR code SVG using segno and embeds it into the template
-- Converts final SVG into PDF (one file per label) using cairosvg
+- Converts final SVG into output format (one file per label) using cairosvg
 """
 
 import argparse
-import csv
 import io
 from pathlib import Path
 import sys
@@ -66,8 +70,12 @@ SIDE_ICON_GENERATORS: dict[str, Callable] = {
     "hex": shape_gen.hex_head_side,
     "countersink": shape_gen.flush_head_side,
     "cs": shape_gen.flush_head_side,
-    "fush": shape_gen.flush_head_side,
+    "flush": shape_gen.flush_head_side,
     "wood_screw": shape_gen.wood_screw_side,
+    "bearing": shape_gen.bearing_side,
+    "bearing_flange": shape_gen.bearing_flange_side,
+    "spring": shape_gen.spring_side,
+    "coil_spring": shape_gen.spring_side,
 }
 
 TOP_ICON_GENERATORS: dict[str, Callable] = {
@@ -108,12 +116,17 @@ TOP_ICON_GENERATORS: dict[str, Callable] = {
     "square": shape_gen.head_square_top,
     "pozidriv": shape_gen.head_pozidriv_top,
     "pozi": shape_gen.head_pozidriv_top,
+    "bearing": shape_gen.bearing_top,
+    "spring": shape_gen.spring_top,
+    "coil_spring": shape_gen.spring_top,
 }
 
 
 # simple logging functions
 # enum representing log levels
 class LogLevel:
+    """Enum representing log levels for the label generator."""
+
     DEBUG = -2
     INFO = -1
     NORMAL = 0
@@ -126,6 +139,7 @@ xprint = print  # backup the normal print function
 
 
 def debug(msg: str, *args, **kwargs) -> None:
+    """Log a debug message if the current log level is DEBUG or lower."""
     if LOG_LEVEL <= LogLevel.DEBUG:
         xprint(
             f"{colorama.Fore.BLUE}[DEBUG] {msg}{colorama.Style.RESET_ALL}",
@@ -135,6 +149,7 @@ def debug(msg: str, *args, **kwargs) -> None:
 
 
 def info(msg: str, *args, **kwargs) -> None:
+    """Log an info message if the current log level is INFO or lower."""
     if LOG_LEVEL <= LogLevel.INFO:
         xprint(
             f"{colorama.Fore.GREEN}[INFO ] {msg}{colorama.Style.RESET_ALL}",
@@ -144,11 +159,13 @@ def info(msg: str, *args, **kwargs) -> None:
 
 
 def print(msg: str, *args, **kwargs) -> None:
+    """Log a normal message if the current log level is NORMAL or lower."""
     if LOG_LEVEL <= LogLevel.NORMAL:
         xprint(msg, *args, **kwargs)
 
 
 def warn(msg: str, *args, **kwargs) -> None:
+    """Log a warning message if the current log level is WARNING or lower."""
     if LOG_LEVEL <= LogLevel.WARNING:
         xprint(
             f"{colorama.Fore.YELLOW}[WARN ] {msg}{colorama.Style.RESET_ALL}",
@@ -158,6 +175,7 @@ def warn(msg: str, *args, **kwargs) -> None:
 
 
 def error(msg: str, *args, **kwargs) -> None:
+    """Log an error message if the current log level is ERROR or lower."""
     if LOG_LEVEL <= LogLevel.ERROR:
         if "file" not in kwargs:
             kwargs["file"] = sys.stderr
@@ -168,17 +186,47 @@ def error(msg: str, *args, **kwargs) -> None:
         )
 
 
+#######################
 # Program code
+#######################
 
 
 def read_template(template_file: Path) -> Template:
+    """Read an SVG template file and return a Template object."""
     with template_file.open("r", encoding="utf-8") as f:
         return Template(f.read())
 
 
+def shorten_url(url: str) -> str:
+    """Shorten a URL using the v.gd API."""
+    if not url.startswith("http://") and not url.startswith("https://"):
+        return url
+    api_base = "https://v.gd/create.php?format=simple&url="
+    try:
+        response = requests.get(api_base + quote(url, safe=""), timeout=5)
+        response.raise_for_status()
+        payload = response.text.strip()
+
+        # strip scheme for more compact encoding
+        if payload.startswith("http://"):
+            payload = payload[len("http://") :]
+        elif payload.startswith("https://"):
+            payload = payload[len("https://") :]
+
+        return payload
+    except requests.RequestException as e:
+        warn(f"URL shortening failed for {url}: {e}")
+        return url
+
+
 def make_qr_svg(content: str, scale_mm: float, qr_type: str = "micro") -> tuple[str, float]:
+    """Generate a QR code as an SVG string and return it along with its size in modules."""
     # Create QR as SVG string. segno uses px units; we'll embed SVG and scale via width/height attrs
     # Try running the URL through a shortener, then remove the leading 'http(s)://', so that micro QR can fit more data
+
+    if not content:
+        return "", 0
+
     api_base = "https://v.gd/create.php?format=simple&url="
     create_url = api_base + quote(content, safe="")
 
@@ -191,29 +239,7 @@ def make_qr_svg(content: str, scale_mm: float, qr_type: str = "micro") -> tuple[
     if qr_type == "standard":
         qr = segno.make(content)
     elif qr_type == "micro":
-
-        # Check if this is a URL we can shorten
-        if not (content.startswith("http://") or content.startswith("https://")):
-            info(f"Content is not a URL, using original content for micro QR: {content}")
-            payload = content
-        else:
-            # Try to shorten content for micro QR
-            debug(f"Attempting to shorten content for micro QR: {content}")
-            try:
-                response = requests.get(create_url)
-                response.raise_for_status()
-                payload = response.text.strip()
-                info(f"URL shortened for micro QR: {content} -> {payload}")
-            except requests.RequestException as e:
-                info(f"URL shortening failed, using original URL: {content} ({e})")
-                payload = content
-
-        # strip scheme for more compact encoding
-        if payload.startswith("http://"):
-            payload = payload[len("http://") :]
-        elif payload.startswith("https://"):
-            payload = payload[len("https://") :]
-
+        payload = shorten_url(content)
         try:
             # Try to make a micro QR code
             qr = segno.make(payload, micro=(qr_type == "micro"))
@@ -233,91 +259,210 @@ def make_qr_svg(content: str, scale_mm: float, qr_type: str = "micro") -> tuple[
 
 
 def mm_to_px(mm: float) -> int:
+    """Convert millimeters to pixels based on the label printer DPI."""
     inches = mm / 25.4
     return int(inches * LABEL_PRINTER_DPI)
 
 
+EXPECTED_COLUMNS = [
+    "name",
+    "description",
+    "top_symbol",
+    "side_symbol",
+    "reorder_url",
+]
+
+
+def parse_csv(csv_file: Path, delimiter: str = ",") -> list[dict[str, str]]:
+    """Parse a CSV file and return a list of dictionaries representing each row."""
+    from csv import DictReader
+
+    rows = []
+    with open(csv_file, newline="", encoding="utf-8") as f:
+        reader = DictReader(f, delimiter=delimiter)
+        for row in reader:
+            rows.append(
+                {
+                    "name": row.get("name", "").strip(),
+                    "description": row.get("description", "").strip(),
+                    "top_symbol": row.get("top_symbol", "").strip(),
+                    "side_symbol": row.get("side_symbol", "").strip(),
+                    "reorder_url": row.get("reorder_url", "").strip(),
+                }
+            )
+    return rows
+
+
+def parse_excel(excel_file: Path) -> list[dict[str, str]]:
+    """Parse an Excel file and return a list of dictionaries representing each row."""
+    from openpyxl import load_workbook
+
+    rows = []
+    wb = load_workbook(excel_file, data_only=True)
+    ws = wb.active
+    headers = [cell.value for cell in ws[1]]
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        row_dict = {header: (value if value is not None else "") for header, value in zip(headers, row)}
+        rows.append(
+            {
+                "name": row_dict.get("name", "").strip(),
+                "description": row_dict.get("description", "").strip(),
+                "top_symbol": row_dict.get("top_symbol", "").strip(),
+                "side_symbol": row_dict.get("side_symbol", "").strip(),
+                "reorder_url": row_dict.get("reorder_url", "").strip(),
+            }
+        )
+    return rows
+
+
+def parse_numbers(numbers_file: Path) -> list[dict[str, str]]:
+    """Parse a Numbers file and return a list of dictionaries representing each row."""
+    from numbers_parser import Document
+
+    doc = Document(numbers_file)
+    sheet = doc.sheets[0]
+    table = sheet.tables[0]
+    headers = [cell.value for cell in table.rows()[0]]
+    rows = []
+    for row in table.rows()[1:]:
+        row_dict = {
+            header: (cell.value if cell is not None and cell.value is not None else "")
+            for header, cell in zip(headers, row)
+        }
+        rows.append(
+            {
+                "name": row_dict.get("name", "").strip(),
+                "description": row_dict.get("description", "").strip(),
+                "top_symbol": row_dict.get("top_symbol", "").strip(),
+                "side_symbol": row_dict.get("side_symbol", "").strip(),
+                "reorder_url": row_dict.get("reorder_url", "").strip(),
+            }
+        )
+    return rows
+
+
+def parse_ods(ods_file: Path) -> list[dict[str, str]]:
+    """Parse an ODS file and return a list of dictionaries representing each row."""
+    from ezodf import opendoc
+
+    doc = opendoc(ods_file)
+    sheet = doc.sheets[0]
+    headers = [cell.value for cell in sheet.rows()[0]]
+    rows = []
+    for row in sheet.rows()[1:]:
+        row_dict = {header: (cell.value if cell.value is not None else "") for header, cell in zip(headers, row)}
+        rows.append(
+            {
+                "name": row_dict.get("name", "").strip(),
+                "description": row_dict.get("description", "").strip(),
+                "top_symbol": row_dict.get("top_symbol", "").strip(),
+                "side_symbol": row_dict.get("side_symbol", "").strip(),
+                "reorder_url": row_dict.get("reorder_url", "").strip(),
+            }
+        )
+    return rows
+
+
+def parse_spreadsheet(spreadsheet_file: Path) -> list[dict[str, str]]:
+    """Parse a spreadsheet file (CSV, TSV, Excel, ODS, Numbers) and return a list of dictionaries representing each row."""
+    extension = spreadsheet_file.suffix.lower()
+    match extension:
+        case ".csv":
+            return parse_csv(spreadsheet_file, delimiter=",")
+        case ".tsv":
+            return parse_csv(spreadsheet_file, delimiter="\t")
+        case ".xls" | ".xlsx":
+            return parse_excel(spreadsheet_file)
+        case ".ods":
+            return parse_ods(spreadsheet_file)
+        case ".numbers":
+            return parse_numbers(spreadsheet_file)
+        case _:
+            raise ValueError(f"Unsupported spreadsheet format: {spreadsheet_file.suffix}")
+
+
 def generate_labels(
-    csv_path: Path,
+    parts_file_path: Path,
     template_file: Path,
     output_dir: Path,
     qr_type: str = "micro",
     output_format: str = "png",
 ) -> None:
-    output_dir.mkdir(parents=True, exist_ok=True)
+    """Generate labels for the parts listed in the spreadsheet using the provided template."""
+
     template = read_template(template_file)
-    with open(csv_path, newline="", encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            name = row.get("name", "").strip()
-            description = row.get("description", "").strip()
-            top_symbol = row.get("top_symbol", "").strip()
-            side_symbol = row.get("side_symbol", "").strip()
-            reorder_url = row.get("reorder_url", "").strip()
+    rows = parse_spreadsheet(parts_file_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-            # Load icons by stem name (print red error if generator missing)
-            top_icon = ""
-            if top_symbol:
-                top_gen = TOP_ICON_GENERATORS.get(top_symbol)
-                if top_gen is None:
-                    error(f"top icon generator not found for '{top_symbol}'")
-                else:
-                    top_icon = top_gen()
+    for row in rows:
+        name = row["name"]
+        description = row["description"]
+        top_symbol = row["top_symbol"]
+        side_symbol = row["side_symbol"]
+        reorder_url = row["reorder_url"]
+        # Load icons by stem name (print red error if generator missing)
+        top_icon = ""
+        if top_symbol:
+            top_gen = TOP_ICON_GENERATORS.get(top_symbol)
+            if top_gen is None:
+                error(f"top icon generator not found for '{top_symbol}'")
+            else:
+                top_icon = top_gen()
 
-            side_icon = ""
-            if side_symbol:
-                side_gen = SIDE_ICON_GENERATORS.get(side_symbol)
-                if side_gen is None:
-                    error(f"side icon generator not found for '{side_symbol}'")
-                else:
-                    side_icon = side_gen()
-            qr_svg, qr_width = make_qr_svg(reorder_url, LABEL_HEIGHT_MM, qr_type=qr_type)
+        side_icon = ""
+        if side_symbol:
+            side_gen = SIDE_ICON_GENERATORS.get(side_symbol)
+            if side_gen is None:
+                error(f"side icon generator not found for '{side_symbol}'")
+            else:
+                side_icon = side_gen()
+        qr_svg, qr_width = make_qr_svg(reorder_url, LABEL_HEIGHT_MM, qr_type=qr_type)
 
-            svg_filled = template.render(
-                {
-                    "LABEL_WIDTH_MM": LABEL_WIDTH_MM,
-                    "LABEL_HEIGHT_MM": LABEL_HEIGHT_MM,
-                    "name": name,
-                    "description": description,
-                    "top_icon_svg": top_icon,
-                    "side_icon_svg": side_icon,
-                    "qr_svg": qr_svg,
-                    "qr_size": qr_width,  # size of the generated QR code in mm
-                }
-            )
+        svg_filled = template.render(
+            {
+                "LABEL_WIDTH_MM": LABEL_WIDTH_MM,
+                "LABEL_HEIGHT_MM": LABEL_HEIGHT_MM,
+                "name": name,
+                "description": description,
+                "top_icon_svg": top_icon,
+                "side_icon_svg": side_icon,
+                "qr_svg": qr_svg,
+                "qr_size": qr_width,  # size of the generated QR code in mm
+            }
+        )
 
-            # Use name for filename (sanitize for filesystem)
-            filename = name.replace("/", "-").replace(" ", "_") + "+" + description.replace(" ", "_").replace("/", "-")
-            out_file_path = output_dir / f"{filename}.{output_format}"
+        # Use name for filename (sanitize for filesystem)
+        filename = name.replace("/", "-").replace(" ", "_") + "+" + description.replace(" ", "_").replace("/", "-")
+        out_file_path = output_dir / f"{filename}.{output_format}"
 
-            match output_format:
-                case "svg":
-                    # write SVG output
-                    with out_file_path.open("w", encoding="utf-8") as f:
-                        f.write(svg_filled)
-                case "pdf":
-                    # Write PDF output
-                    cairosvg.svg2pdf(
-                        bytestring=svg_filled.encode("utf-8"),
-                        write_to=str(out_file_path),
-                        output_width=mm_to_px(LABEL_WIDTH_MM),
-                        output_height=mm_to_px(LABEL_HEIGHT_MM),
-                    )
-                case "png":
-                    # Write PNG output
-                    cairosvg.svg2png(
-                        bytestring=svg_filled.encode("utf-8"),
-                        write_to=str(out_file_path),
-                        output_width=mm_to_px(LABEL_WIDTH_MM),
-                        output_height=mm_to_px(LABEL_HEIGHT_MM),
-                    )
-            print(f"Generated: {out_file_path}")
+        match output_format:
+            case "svg":
+                # write SVG output
+                with out_file_path.open("w", encoding="utf-8") as f:
+                    f.write(svg_filled)
+            case "pdf":
+                # Write PDF output
+                cairosvg.svg2pdf(
+                    bytestring=svg_filled.encode("utf-8"),
+                    write_to=str(out_file_path),
+                    output_width=mm_to_px(LABEL_WIDTH_MM),
+                    output_height=mm_to_px(LABEL_HEIGHT_MM),
+                )
+            case "png":
+                # Write PNG output
+                cairosvg.svg2png(
+                    bytestring=svg_filled.encode("utf-8"),
+                    write_to=str(out_file_path),
+                    output_width=mm_to_px(LABEL_WIDTH_MM),
+                    output_height=mm_to_px(LABEL_HEIGHT_MM),
+                )
+        print(f"Generated: {out_file_path}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate labels for Gridfinity bins from CSV data")
+    parser = argparse.ArgumentParser(description="Generate labels for Gridfinity bins from a spreadsheet")
     parser.add_argument(
-        "csv_file",
+        "parts_file",
         type=Path,
         nargs="?",
         default=Path("parts.csv"),
@@ -372,15 +517,15 @@ if __name__ == "__main__":
         LOG_LEVEL = max(LogLevel.DEBUG, LogLevel.NORMAL - args.verbose)  # decrease log level with more -v
 
     # Check input files
-    if not args.csv_file.exists():
-        error(f"CSV file '{args.csv_file}' does not exist.")
+    if not args.parts_file.exists():
+        error(f"Parts file '{args.parts_file}' does not exist.")
         exit(1)
     if not args.template_file.exists():
         error(f"Template file '{args.template_file}' does not exist.")
         exit(1)
 
     generate_labels(
-        args.csv_file,
+        args.parts_file,
         args.template_file,
         args.output_dir,
         qr_type=args.qr_type,

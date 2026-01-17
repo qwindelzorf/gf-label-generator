@@ -6,3 +6,6 @@ segno
 requests # for URL shortening
 pytest
 pytest-mock
+numbers-parser # for reading apple ".numbers" spreadsheet
+openpyxl # for reading/writing Excel ".xlsx" files
+ezodf # for reading OpenDocument Spreadsheet ".ods" files
