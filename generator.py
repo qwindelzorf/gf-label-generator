@@ -401,6 +401,7 @@ def write_spreadsheet(rows: list[dict[str, str]], output_file: Path, delimiter: 
 
 def sanitize_svg(svg: str) -> str:
     """Validate and clean up an SVG string."""
+    # Allow empty strings (for icons with no generator)
     if not svg:
         return ""
 
@@ -414,8 +415,9 @@ def sanitize_svg(svg: str) -> str:
     svg = re.sub(r">\s+<", "><", svg).strip()
     # Remove leading and trailing whitespace
     svg = svg.strip()
-    # Ensure the SVG starts with <svg and ends with </svg>
-    if not svg.startswith("<svg") or not svg.endswith("</svg>"):
+
+    # If content remains, ensure the SVG is valid (must start and end with angle brackets)
+    if svg and not (svg.startswith("<") and svg.endswith(">")):
         raise ValueError("Invalid SVG content")
 
     return svg
@@ -510,13 +512,9 @@ def generate_labels(
 
         match output_format:
             case "svg":
-                # write SVG output
-                cairosvg.svg2svg(
-                    bytestring=svg_filled.encode("utf-8"),
-                    write_to=str(out_file_path),
-                    output_width=mm_to_px(LABEL_WIDTH_MM),
-                    output_height=mm_to_px(LABEL_HEIGHT_MM),
-                )
+                # write SVG output directly (no conversion needed)
+                with out_file_path.open("w", encoding="utf-8") as f:
+                    f.write(svg_filled)
             case "pdf":
                 # Write PDF output
                 cairosvg.svg2pdf(
