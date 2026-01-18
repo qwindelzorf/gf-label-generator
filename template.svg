@@ -5,15 +5,14 @@
 {%- set LABEL_WIDTH_MM = LABEL_WIDTH_MM | default(36) %}
 {%- set LABEL_HEIGHT_MM = LABEL_HEIGHT_MM | default(9) %}
 {%- set name_font_size = LABEL_HEIGHT_MM * 0.15 %}
-{%- set desc_font_size = LABEL_HEIGHT_MM * 0.12 %}
+{%- set desc_font_size = LABEL_HEIGHT_MM * 0.10 %}
 
 <svg xmlns="http://www.w3.org/2000/svg" width="{{ LABEL_WIDTH_MM }}mm" height="{{ LABEL_HEIGHT_MM }}mm" viewBox="0 0 {{ LABEL_WIDTH_MM }} {{ LABEL_HEIGHT_MM }}" preserveAspectRatio="none">
 
   <style>
-    .bg { fill: white; }
-    .icon { fill: black; }
-    .name { font-family: "Roboto", sans-serif; font-size: {{ name_font_size }}mm; font-weight: 700; fill: #000000; overflow: hidden; text-overflow: ellipsis; }
-    .desc { font-family: "Roboto", sans-serif; font-size: {{ desc_font_size }}mm; fill: #000000; overflow: hidden; text-overflow: ellipsis; }
+    .bg { fill: #FFFFFF; }
+    .name { font-family: "Roboto", sans-serif; font-size: {{ name_font_size }}mm; font-weight: 1000; fill: #000000; }
+    .desc { font-family: "Roboto", sans-serif; font-size: {{ desc_font_size }}mm; font-weight: 300; fill: #000000; }
   </style>
 
   <!-- Background -->
@@ -35,49 +34,56 @@
   A viewBox is used to constrain the icon drawing area, providing scaling and clipping as needed.
   ##}
   {%- if side_icon_svg and top_icon_svg %}
-  {## dual icon view ##}
-  <!-- top view icon -->
-  <g transform="translate({{ LABEL_HEIGHT_MM * 0.5 }}, {{ LABEL_HEIGHT_MM * 0.3 }} ) scale( {{ LABEL_HEIGHT_MM * 0.6 / 100 }} ) translate(-50, -50)">
-      {{ top_icon_svg | safe }}
-  </g>
-  <!-- side view icon -->
-  <g transform="translate({{ LABEL_HEIGHT_MM * 0.5 }}, {{ LABEL_HEIGHT_MM * 0.8 }} ) scale( {{ LABEL_HEIGHT_MM * 0.75 / 100 }} ) rotate(-90, 0, 0) translate(-50, -50)">
-      {{ side_icon_svg | safe }}
+  <g class="icon-area">
+    <!-- top view icon -->
+    <g transform="translate({{ LABEL_HEIGHT_MM * 0.5 }}, {{ LABEL_HEIGHT_MM * 0.3 }} ) scale( {{ LABEL_HEIGHT_MM * 0.6 / 100 }} ) translate(-50, -50)">
+        {{ top_icon_svg | safe }}
+    </g>
+    <!-- side view icon -->
+    <g transform="translate({{ LABEL_HEIGHT_MM * 0.5 }}, {{ LABEL_HEIGHT_MM * 0.8 }} ) scale( {{ LABEL_HEIGHT_MM * 0.75 / 100 }} ) rotate(-90, 0, 0) translate(-50, -50)">
+        {{ side_icon_svg | safe }}
+    </g>
   </g>
   {%- elif top_icon_svg or side_icon_svg %}
-  {## single icon view ##}
-  <g transform="translate({{ LABEL_HEIGHT_MM * 0.5 }}, {{ LABEL_HEIGHT_MM * 0.5 }} ) scale( {{ LABEL_HEIGHT_MM * 0.9 / 100 }} ) translate(-50, -50)">
-      {%- if top_icon_svg %}
-        {{ top_icon_svg | safe }}
-      {%- else %}
-        {{ side_icon_svg | safe }}
-      {%- endif %}
+  <g class="icon-area">
+    <!-- single icon -->
+    <g transform="translate({{ LABEL_HEIGHT_MM * 0.5 }}, {{ LABEL_HEIGHT_MM * 0.5 }} ) scale( {{ LABEL_HEIGHT_MM * 0.9 / 100 }} ) translate(-50, -50)">
+        {%- if top_icon_svg %}
+          {{ top_icon_svg | safe }}
+        {%- else %}
+          {{ side_icon_svg | safe }}
+        {%- endif %}
+    </g>
   </g>
   {%- endif %}
 
-  <!-- Name & description area (middle) -->
   {%- set text_x_offset = LABEL_HEIGHT_MM if top_icon_svg or side_icon_svg else 0 %}
-  {%- set available_width = LABEL_WIDTH_MM - text_x_offset - LABEL_HEIGHT_MM - (LABEL_HEIGHT_MM * 0.15) %}
-  {%- set name_font_size = name_font_size %}
-  {%- set desc_font_size = desc_font_size %}
-  {%- set name_max_scale = available_width / (name_font_size * 15) %}
-  {%- set desc_max_scale = available_width / (desc_font_size * 20) %}
-  {%- set name_scale = name_max_scale if name_max_scale  < 1 else 1 %}
-  {%- set desc_scale = desc_max_scale if desc_max_scale < 1 else 1 %}
-  <g transform="translate({{ text_x_offset * 1.05}}, {{ LABEL_HEIGHT_MM * 0.25 }})">
-    <text class="name" x="0" y="0" dominant-baseline="middle" transform="scale({{ name_scale }})">{{ name }}</text>
-    <text class="desc" x="0" y="{{ LABEL_HEIGHT_MM * 0.50 }}" dominant-baseline="middle" transform="scale({{ desc_scale }})">{{ description }}</text>
+  {%- set text_box_width = (LABEL_WIDTH_MM - text_x_offset - LABEL_HEIGHT_MM) * 0.95 %}
+  {%- set text_box_height = LABEL_HEIGHT_MM / 2 %}
+  <g class="text-area" transform="translate({{ text_x_offset }}, {{ 0 }})">
+    <svg width="{{text_box_width}}" height="{{text_box_height}}" viewBox="0 0 {{text_box_width}} {{text_box_height}}" preserveAspectRatio="xMinYMin meet">
+      <text class="name" dominant-baseline="top">{{ name }}</text>
+    </svg>
+  </g>
+  <line x1="{{ text_x_offset*0.9 }}" y1="{{ text_box_height }}" x2="{{ text_x_offset + text_box_width }}" y2="{{ text_box_height }}" stroke="#000000" stroke-width="0.2"/>
+  <g class="text-area" transform="translate({{ text_x_offset }}, {{ text_box_height*1.1 }})">
+    <svg width="{{text_box_width}}" height="{{text_box_height}}" viewBox="0 0 {{text_box_width}} {{text_box_height}}" preserveAspectRatio="xMinYMin meet">
+      <text class="desc" dominant-baseline="top">{{ description }}</text>
+    </svg>
   </g>
 
   <!-- QR area (right) -->
   {%- if qr_svg %}
-  {%- set qr_height = qr_size %}
-  {%- set qr_width = qr_height %}
-  {%- set qr_scale = LABEL_HEIGHT_MM / qr_height %}
-  {%- set qr_x = LABEL_WIDTH_MM - (qr_width * qr_scale) %}
+  {%- set qr_scale = 1 / qr_size * 1.25 %}
+  {%- set qr_x = LABEL_WIDTH_MM - LABEL_HEIGHT_MM %}
   {%- set qr_y = 0 %}
-  <g transform="translate({{ qr_x }}, {{ qr_y }}), scale( {{ qr_scale }} )">
-    {{ qr_svg | safe }}
+  <g class="qr-area" transform="translate({{ qr_x }}, {{ qr_y }})">
+    <rect x="0" y="0" width="{{ LABEL_HEIGHT_MM }}" height="{{ LABEL_HEIGHT_MM }}" fill="#FFFFFF"/>
+    <svg viewBox="0 0 {{ LABEL_HEIGHT_MM }} {{ LABEL_HEIGHT_MM }}" width="{{ LABEL_HEIGHT_MM }}" height="{{ LABEL_HEIGHT_MM }}" preserveAspectRatio="xMinYMin meet">
+      <g transform="scale({{ qr_scale }})">
+        {{ qr_svg | safe }}
+      </g>
+    </svg>
   </g>
   {%- endif %}
 
