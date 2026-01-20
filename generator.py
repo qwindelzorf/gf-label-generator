@@ -46,7 +46,8 @@ class LogLevel:
 
 
 LOG_LEVEL = LogLevel.NORMAL
-xprint = print  # backup the normal print function
+# backup the normal print function
+xprint = print  # pylint: disable=used-before-assignment
 
 
 def debug(msg: str, *args, **kwargs) -> None:
@@ -69,7 +70,7 @@ def info(msg: str, *args, **kwargs) -> None:
         )
 
 
-def print(msg: str, *args, **kwargs) -> None:
+def print(msg: str, *args, **kwargs) -> None:  # pylint: disable=redefined-builtin
     """Log a normal message if the current log level is NORMAL or lower."""
     if LOG_LEVEL <= LogLevel.NORMAL:
         xprint(msg, *args, **kwargs)
@@ -184,17 +185,21 @@ IMAGE_COLUMNS = ["top_icon", "side_icon", "qr_svg", "label"]
 
 def parse_csv(csv_file: Path, delimiter: str = ",") -> list[dict[str, str]]:
     """Parse a CSV file and return a list of dictionaries representing each row."""
-    from csv import DictReader
+    import csv
 
     rows = []
     with open(csv_file, newline="", encoding="utf-8") as f:
-        reader = DictReader(f, delimiter=delimiter)
+        reader = csv.DictReader(f, delimiter=delimiter, skipinitialspace=True)
+
+        # DictReader automatically reads headers, so we access them via reader.fieldnames
         headers = reader.fieldnames
-        if headers is None:
+        if not headers:
             raise ValueError(f"No headers found in CSV file: {csv_file}")
+
         missing_columns = [col for col in REQUIRED_COLUMNS if col not in headers]
         if missing_columns:
-            raise ValueError(f"Missing required columns in CSV file {csv_file}: {missing_columns}")
+            raise ValueError(f"Missing required column(s) in CSV file {csv_file}: {missing_columns}")
+
         for row in reader:
             rows.append(
                 {
@@ -210,14 +215,17 @@ def parse_csv(csv_file: Path, delimiter: str = ",") -> list[dict[str, str]]:
 
 def write_csv(rows: list[dict[str, str]], output_file: Path, delimiter: str = ",") -> None:
     """Write a list of dictionaries to a CSV file."""
-    from csv import DictWriter
+    import csv
 
     if not rows:
         raise ValueError("No data to write")
 
     headers = list(rows[0].keys())
+    if not headers:
+        raise ValueError("No headers found in data")
+
     with output_file.open("w", newline="", encoding="utf-8") as f:
-        writer = DictWriter(f, fieldnames=headers, delimiter=delimiter)
+        writer = csv.DictWriter(f, fieldnames=headers, delimiter=delimiter)
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
@@ -225,27 +233,29 @@ def write_csv(rows: list[dict[str, str]], output_file: Path, delimiter: str = ",
 
 def parse_excel(excel_file: Path) -> list[dict[str, str]]:
     """Parse an Excel file and return a list of dictionaries representing each row."""
-    from openpyxl import load_workbook
+    import openpyxl
 
     rows = []
-    wb = load_workbook(excel_file, data_only=True)
+    wb = openpyxl.load_workbook(excel_file, data_only=True)
     ws = wb.active
+
     headers = [cell.value for cell in ws[1]]
-    if headers is None:
+    if not headers:
         raise ValueError(f"No headers found in Excel file: {excel_file}")
+
     missing_columns = [col for col in REQUIRED_COLUMNS if col not in headers]
     if missing_columns:
-        raise ValueError(f"Missing required columns in Excel file {excel_file}: {missing_columns}")
+        raise ValueError(f"Missing required column(s) in Excel file {excel_file}: {missing_columns}")
 
     for row in ws.iter_rows(min_row=2, values_only=True):
         row_dict = {header: (value if value is not None else "") for header, value in zip(headers, row)}
         rows.append(
             {
-                "name": row_dict.get("name", "").strip(),
-                "description": row_dict.get("description", "").strip(),
-                "top_symbol": row_dict.get("top_symbol", "").strip(),
-                "side_symbol": row_dict.get("side_symbol", "").strip(),
-                "reorder_url": row_dict.get("reorder_url", "").strip(),
+                "name": str(row_dict.get("name", "")).strip(),
+                "description": str(row_dict.get("description", "")).strip(),
+                "top_symbol": str(row_dict.get("top_symbol", "")).strip(),
+                "side_symbol": str(row_dict.get("side_symbol", "")).strip(),
+                "reorder_url": str(row_dict.get("reorder_url", "")).strip(),
             }
         )
     return rows
@@ -253,31 +263,38 @@ def parse_excel(excel_file: Path) -> list[dict[str, str]]:
 
 def write_excel(rows: list[dict[str, str]], output_file: Path) -> None:
     """Write a list of dictionaries to an Excel file."""
-    from openpyxl import Workbook, drawing
-
     if not rows:
         raise ValueError("No data to write")
-    wb = Workbook()
+
+    import openpyxl
+
+    wb = openpyxl.Workbook()
     ws = wb.active
-    ws.append(list(rows[0].keys()))
+
+    headers = list(rows[0].keys())
+    if not headers:
+        raise ValueError("No headers found in data")
+
+    ws.append(headers)
     for row in rows:
-        ws.append(list(row.values()))
+        ws.append([row.get(header, "") for header in headers])
     wb.save(output_file)
 
 
 def parse_numbers(numbers_file: Path) -> list[dict[str, str]]:
     """Parse a Numbers file and return a list of dictionaries representing each row."""
-    from numbers_parser import Document
+    import numbers_parser as nums
 
-    doc = Document(numbers_file)
+    doc = nums.Document(numbers_file)
     sheet = doc.sheets[0]
     table = sheet.tables[0]
     headers = [cell.value for cell in table.rows()[0]]
-    if headers is None:
+    if not headers:
         raise ValueError(f"No headers found in Numbers file: {numbers_file}")
+
     missing_columns = [col for col in REQUIRED_COLUMNS if col not in headers]
     if missing_columns:
-        raise ValueError(f"Missing required columns in Numbers file {numbers_file}: {missing_columns}")
+        raise ValueError(f"Missing required column(s) in Numbers file {numbers_file}: {missing_columns}")
 
     rows = []
     for row in table.rows()[1:]:
@@ -287,11 +304,11 @@ def parse_numbers(numbers_file: Path) -> list[dict[str, str]]:
         }
         rows.append(
             {
-                "name": row_dict.get("name", "").strip(),
-                "description": row_dict.get("description", "").strip(),
-                "top_symbol": row_dict.get("top_symbol", "").strip(),
-                "side_symbol": row_dict.get("side_symbol", "").strip(),
-                "reorder_url": row_dict.get("reorder_url", "").strip(),
+                "name": str(row_dict.get("name", "")).strip(),
+                "description": str(row_dict.get("description", "")).strip(),
+                "top_symbol": str(row_dict.get("top_symbol", "")).strip(),
+                "side_symbol": str(row_dict.get("side_symbol", "")).strip(),
+                "reorder_url": str(row_dict.get("reorder_url", "")).strip(),
             }
         )
     return rows
@@ -299,12 +316,19 @@ def parse_numbers(numbers_file: Path) -> list[dict[str, str]]:
 
 def write_numbers(rows: list[dict[str, str]], output_file: Path) -> None:
     """Write a list of dictionaries to a Numbers file."""
-    from numbers_parser import Document
+    if not rows:
+        raise ValueError("No data to write")
 
-    doc = Document()
+    import numbers_parser as nums
+
+    doc = nums.Document()
     sheet = doc.sheets[0]
     table = sheet.tables[0]
+
     headers = [cell.value for cell in table.rows()[0]]
+    if not headers:
+        raise ValueError("No headers found in data")
+
     for row in rows:
         table.append_row([row.get(header, "") for header in headers])
     doc.save(output_file)
@@ -312,27 +336,29 @@ def write_numbers(rows: list[dict[str, str]], output_file: Path) -> None:
 
 def parse_ods(ods_file: Path) -> list[dict[str, str]]:
     """Parse an ODS file and return a list of dictionaries representing each row."""
-    from ezodf import opendoc
+    import ezodf
 
-    doc = opendoc(ods_file)
+    doc = ezodf.opendoc(ods_file)
     sheet = doc.sheets[0]
+
     headers = [cell.value for cell in sheet.rows()[0]]
-    if headers is None:
+    if not headers:
         raise ValueError(f"No headers found in ODS file: {ods_file}")
+
     missing_columns = [col for col in REQUIRED_COLUMNS if col not in headers]
     if missing_columns:
-        raise ValueError(f"Missing required columns in ODS file {ods_file}: {missing_columns}")
+        raise ValueError(f"Missing required column(s) in ODS file {ods_file}: {missing_columns}")
 
     rows = []
     for row in sheet.rows()[1:]:
         row_dict = {header: (cell.value if cell.value is not None else "") for header, cell in zip(headers, row)}
         rows.append(
             {
-                "name": row_dict.get("name", "").strip(),
-                "description": row_dict.get("description", "").strip(),
-                "top_symbol": row_dict.get("top_symbol", "").strip(),
-                "side_symbol": row_dict.get("side_symbol", "").strip(),
-                "reorder_url": row_dict.get("reorder_url", "").strip(),
+                "name": str(row_dict.get("name", "")).strip(),
+                "description": str(row_dict.get("description", "")).strip(),
+                "top_symbol": str(row_dict.get("top_symbol", "")).strip(),
+                "side_symbol": str(row_dict.get("side_symbol", "")).strip(),
+                "reorder_url": str(row_dict.get("reorder_url", "")).strip(),
             }
         )
     return rows
@@ -340,14 +366,19 @@ def parse_ods(ods_file: Path) -> list[dict[str, str]]:
 
 def write_ods(rows: list[dict[str, str]], output_file: Path) -> None:
     """Write a list of dictionaries to an ODS file."""
-    from ezodf import newdoc, Sheet
-
     if not rows:
         raise ValueError("No data to write")
-    doc = newdoc(doctype="ods", filename=output_file)
-    sheet = Sheet("Sheet1", size=(len(rows) + 1, len(rows[0])))
+
+    import ezodf
+
+    doc = ezodf.newdoc(doctype="ods", filename=output_file)
+    sheet = ezodf.Sheet("Sheet1", size=(len(rows) + 1, len(rows[0])))
     doc.sheets += sheet
+
     headers = list(rows[0].keys())
+    if not headers:
+        raise ValueError("No headers found in data")
+
     for col, header in enumerate(headers):
         sheet[0, col].set_value(header)
     for row_idx, row in enumerate(rows, start=1):
@@ -357,7 +388,9 @@ def write_ods(rows: list[dict[str, str]], output_file: Path) -> None:
 
 
 def parse_spreadsheet(spreadsheet_file: Path) -> list[dict[str, str]]:
-    """Parse a spreadsheet file (CSV, TSV, Excel, ODS, Numbers) and return a list of dictionaries representing each row."""
+    """Parse a spreadsheet file
+    Parse (CSV, TSV, Excel, ODS, Numbers) and return a list of dictionaries representing each row.
+    """
     extension = spreadsheet_file.suffix.lower()
     rows = []
     match extension:
@@ -377,7 +410,7 @@ def parse_spreadsheet(spreadsheet_file: Path) -> list[dict[str, str]]:
     return rows
 
 
-def write_spreadsheet(rows: list[dict[str, str]], output_file: Path, delimiter: str = ",") -> None:
+def write_spreadsheet(rows: list[dict[str, str]], output_file: Path) -> None:
     """Write a list of dictionaries to a spreadsheet file."""
     if not rows:
         raise ValueError("No data to write")
