@@ -2,13 +2,21 @@
     // See https://go.microsoft.com/fwlink/?LinkId=733558
     // for the documentation about the tasks.json format
     "version": "2.0.0",
+    "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "clear": true
+    },
     "tasks": [
         {
             "label": "Run generator",
             "type": "shell",
             "command": "python3",
             "args": [
-                "${workspaceFolder}/generate_labels.py"
+                "${workspaceFolder}/generator.py"
             ],
             "group": {
                 "kind": "build",
