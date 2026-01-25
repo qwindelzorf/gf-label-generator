@@ -116,8 +116,9 @@ def is_url(s: str) -> bool:
 
 def shorten_url(url: str) -> str:
     """Shorten a URL using the v.gd API."""
+    # If input is not an HTTP(S) URL, return it unchanged (no shortening).
     if not is_url(url):
-        raise ValueError(f"Invalid URL: {url}")
+        return url
 
     # Use the v.gd API to shorten the URL
     #  https://v.gd/apishorteningreference.php
@@ -553,9 +554,13 @@ def generate_labels(
 
         match output_format:
             case "svg":
-                # write SVG output directly (no conversion needed)
-                with out_file_path.open("w", encoding="utf-8") as f:
-                    f.write(svg_filled)
+                # Normalize/write SVG using cairosvg.svg2svg to ensure consistent output
+                cairosvg.svg2svg(
+                    bytestring=svg_filled.encode("utf-8"),
+                    write_to=str(out_file_path),
+                    output_width=mm_to_px(LABEL_WIDTH_MM),
+                    output_height=mm_to_px(LABEL_HEIGHT_MM),
+                )
             case "pdf":
                 # Write PDF output
                 cairosvg.svg2pdf(
