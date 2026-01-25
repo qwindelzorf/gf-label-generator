@@ -1,16 +1,17 @@
 name,description,top_symbol,side_symbol,reorder_url
 M5x40,SHCS,socket,cap,https://www.mcmaster.com/91292A194/
-M3x20,BHTS,torx,button,M3x20
-"#8 1.5""",Wood Screw,square,wood_screw,#8x1.5
-1/4-20,Hex nut,nut_standard,nut_standard,1/4-20
-M3,Acorn Nut,nut_cap,nut_cap,M3
-M3,Wing Nut,wing,wing,M3
-M5,Washer,washer,washer,https://www.mcmaster.com/93475A240/
+M3x20,BHTS,torx,button,https://www.mcmaster.com/90910A577/
+"#8 1.5""",Wood Screw,square,wood_screw,https://www.mcmaster.com/90031A203/
+M3,Hex nut,nut_standard,nut_standard,https://www.mcmaster.com/90591A250/
+M3,Acorn Nut,nut_cap,nut_cap,https://www.mcmaster.com/94000A330/
+M3,Wing Nut,wing,wing,https://www.mcmaster.com/94300A120/
+M3,Star Lock,star,star,https://www.mcmaster.com/91120A120/
+M3,Lock Washer,star_inner,star_inner,https://www.mcmaster.com/93925A240/
+M3,Split,split,split,https://www.mcmaster.com/92148A150/
+M3,Nyloc,nyloc,nyloc,https://www.mcmaster.com/90576A102/
+M3,Flange Nut,nut_flange,nut_flange,https://www.mcmaster.com/90374A211/
+M3,Press Insert,insert_press,insert_press,https://www.mcmaster.com/93738A262/
+M3,Wood Insert,insert_wood,insert_wood,https://www.mcmaster.com/95807A490/
 M5,7.8x6.8,insert_heat,insert_heat,https://www.mcmaster.com/94180A361/
-M3,Star Lock,star,star,star
-M3,Lock Washer,star_inner,star_inner,star
-M3,Split,split,split,split
-M3,Nyloc,nyloc,nyloc,nyloc
-M3,Flange Nut,nut_flange,nut_flange,nut_flange
-M2,Press Insert,insert_press,insert_press,press
-M2,Wood Insert,insert_wood,insert_wood,wood
+M5,Washer,washer,washer,https://www.mcmaster.com/93475A240/
+20AWG,Ferrule,wire_ferrule,wire_ferrule,https://www.mcmaster.com/7950K13/
