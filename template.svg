@@ -62,13 +62,13 @@
   {%- set text_box_height = LABEL_HEIGHT_MM / 2 %}
   <g class="text-area" transform="translate({{ text_x_offset }}, {{ 0 }})">
     <svg width="{{text_box_width}}" height="{{text_box_height}}" viewBox="0 0 {{text_box_width}} {{text_box_height}}" preserveAspectRatio="xMinYMin meet">
-      <text class="name" dominant-baseline="top">{{ name }}</text>
+      <text class="name" x="0%" y="0%" dy="-0.3em" textLength="{{ text_box_width }}" lengthAdjust="spacing" dominant-baseline="top">{{ name }}</text>
     </svg>
   </g>
   <line x1="{{ text_x_offset*0.9 }}" y1="{{ text_box_height }}" x2="{{ text_x_offset + text_box_width }}" y2="{{ text_box_height }}" stroke="#000000" stroke-width="0.2"/>
   <g class="text-area" transform="translate({{ text_x_offset }}, {{ text_box_height*1.1 }})">
     <svg width="{{text_box_width}}" height="{{text_box_height}}" viewBox="0 0 {{text_box_width}} {{text_box_height}}" preserveAspectRatio="xMinYMin meet">
-      <text class="desc" dominant-baseline="top">{{ description }}</text>
+      <text class="desc" x="0%" y="0%" dy="-0.3em" textLength="{{ text_box_width }}" lengthAdjust="spacing" dominant-baseline="top">{{ description }}</text>
     </svg>
   </g>
 
