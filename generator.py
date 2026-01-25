@@ -109,10 +109,18 @@ def read_template(template_file: Path) -> Template:
         return Template(f.read())
 
 
+def is_url(s: str) -> bool:
+    """Check if a string is a valid URL."""
+    return s.startswith("http://") or s.startswith("https://")
+
+
 def shorten_url(url: str) -> str:
     """Shorten a URL using the v.gd API."""
-    if not url.startswith("http://") and not url.startswith("https://"):
-        return url
+    if not is_url(url):
+        raise ValueError(f"Invalid URL: {url}")
+
+    # Use the v.gd API to shorten the URL
+    #  https://v.gd/apishorteningreference.php
     api_base = "https://v.gd/create.php?format=simple&url="
     try:
         response = requests.get(api_base + quote(url, safe=""), timeout=5)
@@ -148,13 +156,13 @@ def make_qr_svg(content: str, scale_mm: float, qr_type: str = "micro") -> tuple[
     if qr_type == "standard":
         qr = segno.make(content)
     elif qr_type == "micro":
-        payload = shorten_url(content)
+        payload = shorten_url(content) if is_url(content) else content
         try:
             # Try to make a micro QR code
             qr = segno.make(payload, micro=(qr_type == "micro"))
         except ValueError:
             # Fallback to standard QR if micro QR is not possible
-            info(f"URL too long for micro QR, using standard QR: {content}")
+            info(f"Value too long for micro QR, using standard QR: {content}")
             qr = segno.make(payload, micro=False)
     if qr is None:
         raise RuntimeError("Failed to generate QR code")
@@ -179,7 +187,7 @@ def mm_to_px(mm: float) -> int:
 
 # Required columns for the parts CSV/Excel/Numbers files
 REQUIRED_COLUMNS = ["name", "description"]
-OPTIONAL_COLUMNS = ["top_symbol", "side_symbol", "reorder_url", "top_icon", "side_icon", "qr_svg", "label"]
+OPTIONAL_COLUMNS = ["top_symbol", "side_symbol", "reorder_url", "short_url", "top_icon", "side_icon", "qr_svg", "label"]
 IMAGE_COLUMNS = ["top_icon", "side_icon", "qr_svg", "label"]
 
 
