@@ -177,8 +177,8 @@ def mm_to_px(mm: float) -> int:
 ######################
 
 # Required columns for the parts CSV/Excel/Numbers files
-REQUIRED_COLUMNS = ["name", "description", "top_symbol", "side_symbol"]
-OPTIONAL_COLUMNS = ["reorder_url", "top_icon", "side_icon", "qr_svg", "label"]
+REQUIRED_COLUMNS = ["name", "description"]
+OPTIONAL_COLUMNS = ["top_symbol", "side_symbol", "reorder_url", "top_icon", "side_icon", "qr_svg", "label"]
 IMAGE_COLUMNS = ["top_icon", "side_icon", "qr_svg", "label"]
 
 
@@ -402,7 +402,7 @@ def write_spreadsheet(rows: list[dict[str, str]], output_file: Path, delimiter: 
 def sanitize_svg(svg: str) -> str:
     """Validate and clean up an SVG string."""
     if not svg:
-        raise ValueError("SVG content is empty")
+        return ""
 
     # Remove XML declaration if present
     svg = re.sub(r"<\?xml.*?\?>", "", svg).strip()
@@ -450,8 +450,11 @@ def generate_labels(
                     error(f"top icon generator not found for '{top_symbol}'")
                 else:
                     top_icon = top_gen()
-            row["top_icon"] = sanitize_svg(top_icon)
-            debug(f"Generated top icon for {name}+{description}")
+            if top_icon:
+                row["top_icon"] = sanitize_svg(top_icon)
+                debug(f"Generated top icon for {name}+{description}")
+            else:
+                row["top_icon"] = ""
         else:
             top_icon = sanitize_svg(row["top_icon"])
             # strip xml declaration
@@ -466,10 +469,11 @@ def generate_labels(
                     error(f"side icon generator not found for '{side_symbol}'")
                 else:
                     side_icon = side_gen()
-            row["side_icon"] = sanitize_svg(side_icon)
-            # strip xml declaration
-            row["side_icon"] = re.sub(r"<\?xml.*?\?>", "", row["side_icon"]).strip()
-            debug(f"Generated side icon for {name}+{description}")
+            if side_icon:
+                row["side_icon"] = sanitize_svg(side_icon)
+                debug(f"Generated side icon for {name}+{description}")
+            else:
+                row["side_icon"] = ""
         else:
             side_icon = sanitize_svg(row["side_icon"])
             debug(f"Using existing side icon for {name}+{description}")

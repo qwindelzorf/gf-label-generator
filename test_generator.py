@@ -247,11 +247,12 @@ class TestLoggingFunctions:
 class TestGenerateLabels:
     """Test main label generation function."""
 
+    @patch("generator.cairosvg.svg2svg")
     @patch("generator.cairosvg.svg2png")
     @patch("generator.make_qr_svg")
     @patch("generator.read_template")
     @patch("builtins.open", new_callable=mock_open)
-    def test_generate_labels_creates_output_dir(self, mock_file, mock_template, mock_qr, mock_cairo):
+    def test_generate_labels_creates_output_dir(self, mock_file, mock_template, mock_qr, mock_png, mock_svg):
         """Test that generate_labels creates output directory."""
         # Setup mocks
         csv_content = "name,description,top_symbol,side_symbol,reorder_url\nTest,Desc,hex,washer,http://example.com"
@@ -271,10 +272,10 @@ class TestGenerateLabels:
             )
             mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
-    @patch("generator.cairosvg.svg2png")
+    @patch("generator.cairosvg.svg2svg")
     @patch("generator.make_qr_svg")
     @patch("generator.read_template")
-    def test_generate_labels_svg_output(self, mock_template, mock_qr, mock_cairo):
+    def test_generate_labels_svg_output(self, mock_template, mock_qr, mock_svg2svg):
         """Test SVG output format."""
         csv_content = "name,description,top_symbol,side_symbol,reorder_url\nTest,Desc,hex,washer,http://example.com"
 
@@ -295,8 +296,8 @@ class TestGenerateLabels:
                         output_format="svg",
                     )
 
-                    # SVG should be written, not converted
-                    assert not mock_cairo.called
+                    # SVG should be written using svg2svg
+                    assert mock_svg2svg.called
 
     @patch("generator.cairosvg.svg2pdf")
     @patch("generator.make_qr_svg")
@@ -319,10 +320,11 @@ class TestGenerateLabels:
 
                 assert mock_cairo.called
 
+    @patch("generator.cairosvg.svg2svg")
     @patch("generator.cairosvg.svg2png")
     @patch("generator.make_qr_svg")
     @patch("generator.read_template")
-    def test_generate_labels_handles_missing_icons(self, mock_template, mock_qr, mock_cairo):
+    def test_generate_labels_handles_missing_icons(self, mock_template, mock_qr, mock_png, mock_svg):
         """Test handling of missing icon generators."""
         csv_content = (
             "name,description,top_symbol,side_symbol,reorder_url\nTest,Desc,nonexistent,invalid,http://example.com"
