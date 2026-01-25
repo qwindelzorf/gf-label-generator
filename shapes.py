@@ -937,3 +937,51 @@ def spring_top(diameter: float = 80) -> str:
         <circle cx="50" cy="50" r="{coil_radius}" fill="#FFFFFF" />
     </svg>
     """
+
+
+@icon_generator("side", names=["ferrule", "cable_ferrule", "wire_ferrule"])
+def ferrule_side(diameter: float = 40, length: float = 80) -> str:
+    """Cable ferrule, side view
+    A simple rectangle representing the ferrule crimped section, a trapezoid representing the insulation
+    and another larger rectangle representing the cable
+    """
+    crimp_radius = diameter * 0.3
+    crimp_length = length * 0.4
+
+    cable_radius = diameter * 0.5
+    cable_length = length * 0.3
+
+    insulation_length = length * 0.3
+    insulation_minor_radius = crimp_radius
+    insulation_major_radius = cable_radius
+    insulation_points = [
+        (50 - insulation_minor_radius, (100 - length) / 2 + crimp_length),
+        (50 + insulation_minor_radius, (100 - length) / 2 + crimp_length),
+        (50 + insulation_major_radius, (100 - length) / 2 + crimp_length + insulation_length),
+        (50 - insulation_major_radius, (100 - length) / 2 + crimp_length + insulation_length),
+    ]
+
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        <!-- Cable section -->
+        <rect x="{50-cable_radius}" y="{(100 - length) / 2 + crimp_length + insulation_length}" width="{cable_radius * 2}" height="{cable_length}" fill="#000000" />
+        <!-- Insulation taper -->
+        <polygon points="{' '.join([f'{x},{y}' for x, y in insulation_points])}" fill="#555555" />
+        <!-- Crimped ferrule section -->
+        <rect x="{50 - crimp_radius}" y="{(100 - length) / 2}" width="{crimp_radius * 2}" height="{crimp_length}" fill="#000000" />
+    </svg>
+    """
+
+
+@icon_generator("top", names=["ferrule", "cable_ferrule", "wire_ferrule"])
+def ferrule_top(diameter: float = 80) -> str:
+    """Cable ferrule, top view
+    A annular ring with a square representing the cable end
+    """
+    radius = diameter * 0.5
+    return f"""
+    <svg width="100" height="100" viewBox="0 0 100 100">
+        {annulus(radius, radius * 0.6)}
+        <rect x="{50 - radius * 0.4}" y="{50 - radius * 0.4}" width="{radius * 0.8}" height="{radius * 0.8}" fill="#000000" transform="rotate(45 50 50)" />
+    </svg>
+    """
