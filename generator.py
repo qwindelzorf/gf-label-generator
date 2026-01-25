@@ -191,7 +191,7 @@ OPTIONAL_COLUMNS = ["top_symbol", "side_symbol", "reorder_url", "short_url", "to
 IMAGE_COLUMNS = ["top_icon", "side_icon", "qr_svg", "label"]
 
 
-def parse_csv(csv_file: Path, delimiter: str = ",") -> list[dict[str, str]]:
+def parse_csv(csv_file: Path, delimiter: str = ",") -> list[dict[str, str | bytes]]:
     """Parse a CSV file and return a list of dictionaries representing each row."""
     import csv
 
@@ -211,17 +211,25 @@ def parse_csv(csv_file: Path, delimiter: str = ",") -> list[dict[str, str]]:
         for row in reader:
             rows.append(
                 {
-                    "name": row.get("name", "").strip(),
-                    "description": row.get("description", "").strip(),
-                    "top_symbol": row.get("top_symbol", "").strip(),
-                    "side_symbol": row.get("side_symbol", "").strip(),
-                    "reorder_url": row.get("reorder_url", "").strip(),
+                    # Text columns
+                    "name": str(row.get("name")).strip(),
+                    "description": str(row.get("description")).strip(),
+                    # optional text columns
+                    "top_symbol": str(row.get("top_symbol", "")).strip(),
+                    "side_symbol": str(row.get("side_symbol", "")).strip(),
+                    "reorder_url": str(row.get("reorder_url", "")).strip(),
+                    "short_url": str(row.get("short_url", "")).strip(),
+                    # Image columns not supported on CSV import
+                    "top_icon": bytes(),
+                    "side_icon": bytes(),
+                    "qr_svg": bytes(),
+                    "label": bytes(),
                 }
             )
     return rows
 
 
-def write_csv(rows: list[dict[str, str]], output_file: Path, delimiter: str = ",") -> None:
+def write_csv(rows: list[dict[str, str | bytes]], output_file: Path, delimiter: str = ",") -> None:
     """Write a list of dictionaries to a CSV file."""
     import csv
 
@@ -236,16 +244,20 @@ def write_csv(rows: list[dict[str, str]], output_file: Path, delimiter: str = ",
         writer = csv.DictWriter(f, fieldnames=headers, delimiter=delimiter)
         writer.writeheader()
         for row in rows:
-            writer.writerow(row)
+            # Don't write image columns to CSV
+            row_to_write = {k: v for k, v in row.items() if k not in IMAGE_COLUMNS}
+            writer.writerow(row_to_write)
 
 
-def parse_excel(excel_file: Path) -> list[dict[str, str]]:
+def parse_excel(excel_file: Path) -> list[dict[str, str | bytes]]:
     """Parse an Excel file and return a list of dictionaries representing each row."""
     import openpyxl
 
     rows = []
     wb = openpyxl.load_workbook(excel_file, data_only=True)
     ws = wb.active
+    if not ws:
+        raise ValueError(f"No active worksheet found in Excel file: {excel_file}")
 
     headers = [cell.value for cell in ws[1]]
     if not headers:
@@ -259,17 +271,26 @@ def parse_excel(excel_file: Path) -> list[dict[str, str]]:
         row_dict = {header: (value if value is not None else "") for header, value in zip(headers, row)}
         rows.append(
             {
-                "name": str(row_dict.get("name", "")).strip(),
-                "description": str(row_dict.get("description", "")).strip(),
+                # Text columns
+                "name": str(row_dict.get("name")).strip(),
+                "description": str(row_dict.get("description")).strip(),
+                # optional text columns
                 "top_symbol": str(row_dict.get("top_symbol", "")).strip(),
                 "side_symbol": str(row_dict.get("side_symbol", "")).strip(),
                 "reorder_url": str(row_dict.get("reorder_url", "")).strip(),
+                "short_url": str(row_dict.get("short_url", "")).strip(),
+                # Image columns
+                # todo: handle image columns properly
+                "top_icon": row_dict.get("top_icon", bytes()),
+                "side_icon": row_dict.get("side_icon", bytes()),
+                "qr_svg": row_dict.get("qr_svg", bytes()),
+                "label": row_dict.get("label", bytes()),
             }
         )
     return rows
 
 
-def write_excel(rows: list[dict[str, str]], output_file: Path) -> None:
+def write_excel(rows: list[dict[str, str | bytes]], output_file: Path) -> None:
     """Write a list of dictionaries to an Excel file."""
     if not rows:
         raise ValueError("No data to write")
@@ -280,16 +301,22 @@ def write_excel(rows: list[dict[str, str]], output_file: Path) -> None:
     ws = wb.active
 
     headers = list(rows[0].keys())
-    if not headers:
-        raise ValueError("No headers found in data")
-
     ws.append(headers)
-    for row in rows:
-        ws.append([row.get(header, "") for header in headers])
+
+    for row_idx, row in enumerate(rows):
+        for col_idx, header in enumerate(headers):
+            if header not in IMAGE_COLUMNS:
+                ws.cell(row=row_idx + 2, column=col_idx + 1, value=str(row.get(header, "")))
+            else:
+                # For image columns, store as an actual image in the Excel file if possible
+                data = row.get(header, bytes())
+                img = openpyxl.drawing.image.Image(data)
+                img.anchor = f"{openpyxl.utils.get_column_letter(col_idx+1)}{row_idx+2}"
+                ws.add_image(img)
     wb.save(output_file)
 
 
-def parse_numbers(numbers_file: Path) -> list[dict[str, str]]:
+def parse_numbers(numbers_file: Path) -> list[dict[str, str | bytes]]:
     """Parse a Numbers file and return a list of dictionaries representing each row."""
     import numbers_parser as nums
 
@@ -312,17 +339,25 @@ def parse_numbers(numbers_file: Path) -> list[dict[str, str]]:
         }
         rows.append(
             {
-                "name": str(row_dict.get("name", "")).strip(),
-                "description": str(row_dict.get("description", "")).strip(),
+                # Text columns
+                "name": str(row_dict.get("name")).strip(),
+                "description": str(row_dict.get("description")).strip(),
+                # optional text columns
                 "top_symbol": str(row_dict.get("top_symbol", "")).strip(),
                 "side_symbol": str(row_dict.get("side_symbol", "")).strip(),
                 "reorder_url": str(row_dict.get("reorder_url", "")).strip(),
+                "short_url": str(row_dict.get("short_url", "")).strip(),
+                # Image columns
+                "top_icon": row_dict.get("top_icon", bytes()),
+                "side_icon": row_dict.get("side_icon", bytes()),
+                "qr_svg": row_dict.get("qr_svg", bytes()),
+                "label": row_dict.get("label", bytes()),
             }
         )
     return rows
 
 
-def write_numbers(rows: list[dict[str, str]], output_file: Path) -> None:
+def write_numbers(rows: list[dict[str, str | bytes]], output_file: Path) -> None:
     """Write a list of dictionaries to a Numbers file."""
     if not rows:
         raise ValueError("No data to write")
@@ -338,11 +373,17 @@ def write_numbers(rows: list[dict[str, str]], output_file: Path) -> None:
         raise ValueError("No headers found in data")
 
     for row in rows:
-        table.append_row([row.get(header, "") for header in headers])
+        for col_idx, header in enumerate(headers):
+            if header not in IMAGE_COLUMNS:
+                table.append_row([row.get(header, "") for header in headers])
+            else:
+                # For image columns, store the generated image in the Numbers file if possible
+                # TODO: Implement image insertion for Numbers
+                pass
     doc.save(output_file)
 
 
-def parse_ods(ods_file: Path) -> list[dict[str, str]]:
+def parse_ods(ods_file: Path) -> list[dict[str, str | bytes]]:
     """Parse an ODS file and return a list of dictionaries representing each row."""
     import ezodf
 
@@ -362,17 +403,25 @@ def parse_ods(ods_file: Path) -> list[dict[str, str]]:
         row_dict = {header: (cell.value if cell.value is not None else "") for header, cell in zip(headers, row)}
         rows.append(
             {
-                "name": str(row_dict.get("name", "")).strip(),
-                "description": str(row_dict.get("description", "")).strip(),
+                # Text columns
+                "name": str(row_dict.get("name")).strip(),
+                "description": str(row_dict.get("description")).strip(),
+                # optional text columns
                 "top_symbol": str(row_dict.get("top_symbol", "")).strip(),
                 "side_symbol": str(row_dict.get("side_symbol", "")).strip(),
                 "reorder_url": str(row_dict.get("reorder_url", "")).strip(),
+                "short_url": str(row_dict.get("short_url", "")).strip(),
+                # Image columns
+                "top_icon": row_dict.get("top_icon", bytes()),
+                "side_icon": row_dict.get("side_icon", bytes()),
+                "qr_svg": row_dict.get("qr_svg", bytes()),
+                "label": row_dict.get("label", bytes()),
             }
         )
     return rows
 
 
-def write_ods(rows: list[dict[str, str]], output_file: Path) -> None:
+def write_ods(rows: list[dict[str, str | bytes]], output_file: Path) -> None:
     """Write a list of dictionaries to an ODS file."""
     if not rows:
         raise ValueError("No data to write")
@@ -391,11 +440,16 @@ def write_ods(rows: list[dict[str, str]], output_file: Path) -> None:
         sheet[0, col].set_value(header)
     for row_idx, row in enumerate(rows, start=1):
         for col_idx, header in enumerate(headers):
-            sheet[row_idx, col_idx].set_value(row.get(header, ""))
+            if header not in IMAGE_COLUMNS:
+                sheet[row_idx, col_idx].set_value(row.get(header, ""))
+            else:
+                # For image columns, store the generated image in the ODS file if possible
+                # TODO: Implement image insertion for ODS
+                pass
     doc.save()
 
 
-def parse_spreadsheet(spreadsheet_file: Path) -> list[dict[str, str]]:
+def parse_spreadsheet(spreadsheet_file: Path) -> list[dict[str, str | bytes]]:
     """Parse a spreadsheet file
     Parse (CSV, TSV, Excel, ODS, Numbers) and return a list of dictionaries representing each row.
     """
@@ -418,7 +472,7 @@ def parse_spreadsheet(spreadsheet_file: Path) -> list[dict[str, str]]:
     return rows
 
 
-def write_spreadsheet(rows: list[dict[str, str]], output_file: Path) -> None:
+def write_spreadsheet(rows: list[dict[str, str | bytes]], output_file: Path) -> None:
     """Write a list of dictionaries to a spreadsheet file."""
     if not rows:
         raise ValueError("No data to write")
@@ -470,7 +524,7 @@ def generate_labels(
     output_dir: Path,
     qr_type: str = "micro",
     output_format: str = "png",
-) -> list[dict[str, str]]:
+) -> list[dict[str, str | bytes]]:
     """Generate labels for the parts listed in the spreadsheet using the provided template."""
 
     template = read_template(template_file)
