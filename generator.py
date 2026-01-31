@@ -191,6 +191,12 @@ REQUIRED_COLUMNS = ["name", "description"]
 OPTIONAL_COLUMNS = ["top_symbol", "side_symbol", "reorder_url", "short_url", "top_icon", "side_icon", "qr_svg", "label"]
 IMAGE_COLUMNS = ["top_icon", "side_icon", "qr_svg", "label"]
 
+# Excel image export settings
+EXCEL_ROW_HEIGHT_POINTS = 75  # Row height in points for image rows (~100 pixels)
+EXCEL_LABEL_IMAGE_WIDTH = 200  # Width in pixels for label images
+EXCEL_LABEL_IMAGE_HEIGHT = 50  # Height in pixels for label images
+EXCEL_ICON_IMAGE_SIZE = 50  # Size in pixels for icon and QR code images
+
 
 def parse_csv(csv_file: Path, delimiter: str = ",") -> list[dict[str, str]]:
     """Parse a CSV file and return a list of dictionaries representing each row."""
@@ -271,11 +277,17 @@ def parse_excel(excel_file: Path) -> list[dict[str, str]]:
 
 
 def write_excel(rows: list[dict[str, str]], output_file: Path) -> None:
-    """Write a list of dictionaries to an Excel file."""
+    """Write a list of dictionaries to an Excel file.
+    
+    For image columns (top_icon, side_icon, qr_svg, label), embeds PNG images
+    converted from SVG. For other columns, writes text values.
+    """
     if not rows:
         raise ValueError("No data to write")
 
     import openpyxl
+    # Import Image class locally as openpyxl is an optional dependency
+    from openpyxl.drawing.image import Image
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -284,9 +296,67 @@ def write_excel(rows: list[dict[str, str]], output_file: Path) -> None:
     if not headers:
         raise ValueError("No headers found in data")
 
+    # Write headers
     ws.append(headers)
-    for row in rows:
-        ws.append([row.get(header, "") for header in headers])
+
+    # Write data rows
+    for row_idx, row in enumerate(rows, start=2):  # Start at 2 because row 1 is headers
+        row_values = []
+        for col_idx, header in enumerate(headers, start=1):  # Excel columns are 1-indexed
+            value = row.get(header, "")
+            
+            # For image columns, embed PNG image if SVG content exists
+            if header in IMAGE_COLUMNS and value:
+                try:
+                    # Convert SVG to PNG in memory
+                    png_data = cairosvg.svg2png(bytestring=value.encode("utf-8"))
+                    
+                    # Create image from bytes
+                    img = Image(io.BytesIO(png_data))
+                    
+                    # Scale image to fit in cell (approximate cell width in pixels)
+                    if header == "label":
+                        # Labels are wider, scale appropriately
+                        img.width = EXCEL_LABEL_IMAGE_WIDTH
+                        img.height = EXCEL_LABEL_IMAGE_HEIGHT
+                    else:
+                        # Icons and QR codes are smaller
+                        img.width = EXCEL_ICON_IMAGE_SIZE
+                        img.height = EXCEL_ICON_IMAGE_SIZE
+                    
+                    # Add image to worksheet at the current cell
+                    cell_address = ws.cell(row=row_idx, column=col_idx).coordinate
+                    ws.add_image(img, cell_address)
+                    
+                    # Write empty string to cell so it doesn't overlap
+                    row_values.append("")
+                    
+                    # Increase row height for this row to accommodate image
+                    if ws.row_dimensions[row_idx].height is None or ws.row_dimensions[row_idx].height < EXCEL_ROW_HEIGHT_POINTS:
+                        ws.row_dimensions[row_idx].height = EXCEL_ROW_HEIGHT_POINTS
+                except Exception as e:
+                    # If image embedding fails, fall back to text
+                    warn(f"Failed to embed image for {header} in row {row_idx}: {e}")
+                    row_values.append(value)
+            else:
+                # Non-image columns: write text
+                row_values.append(value)
+        
+        ws.append(row_values)
+
+    # Adjust column widths for better readability
+    for col_idx, header in enumerate(headers, start=1):
+        column_letter = openpyxl.utils.get_column_letter(col_idx)
+        if header in IMAGE_COLUMNS:
+            # Make image columns wider
+            if header == "label":
+                ws.column_dimensions[column_letter].width = 30
+            else:
+                ws.column_dimensions[column_letter].width = 10
+        else:
+            # Text columns can be narrower
+            ws.column_dimensions[column_letter].width = 15
+
     wb.save(output_file)
 
 

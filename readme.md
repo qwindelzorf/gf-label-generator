@@ -40,8 +40,27 @@ python3 generator.py
 
 - `--format` : `png` (default), `pdf`, or `svg`.
 - `--qr-type` : `micro` (default) or `standard`.
+- `--export` : update the input spreadsheet with generated icons and labels (see below).
 - `-q/--quiet` : suppress non-error logs.
 - `-v/--verbose` : increase logging verbosity (repeatable).
+
+### Export feature
+
+Use the `--export` flag to write generated icons, QR codes, and complete labels back into the input spreadsheet:
+
+```bash
+python3 generator.py parts.xlsx --export
+```
+
+**Format-specific behavior:**
+- **CSV/TSV**: Stores SVG content as text in new columns (`top_icon`, `side_icon`, `qr_svg`, `label`).
+- **Excel (.xlsx)**: Embeds actual PNG images (converted from SVG) for better visualization.
+- **Other formats** (.ods, .numbers): Stores SVG content as text.
+
+This feature is useful for:
+- Reviewing generated icons and QR codes directly in the spreadsheet
+- Sharing the complete design with stakeholders
+- Keeping a record of what was generated for each part
 
 ## Notes & tips
 

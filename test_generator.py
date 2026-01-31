@@ -728,3 +728,169 @@ class TestParsingFunctions:
         """Test parse_spreadsheet routing for ODS - skipped due to lxml dependency."""
         # ODS parsing requires lxml which may not always be available
         pass
+
+
+class TestWriteSpreadsheet:
+    """Test spreadsheet writing functions."""
+
+    class MockDimension:
+        """Mock dimension object for Excel row/column dimensions."""
+        height = None
+        width = None
+
+    def test_write_csv_basic(self):
+        """Test basic CSV writing."""
+        rows = [
+            {
+                "name": "Test",
+                "description": "Desc",
+                "top_symbol": "hex",
+                "side_symbol": "washer",
+                "reorder_url": "http://test.com",
+            }
+        ]
+
+        with patch("pathlib.Path.open", mock_open()) as mock_file:
+            generator.write_csv(rows, Path("test.csv"))
+            mock_file.assert_called_once()
+
+    def test_write_csv_with_svg_content(self):
+        """Test CSV writing with SVG content (stored as text)."""
+        rows = [
+            {
+                "name": "Test",
+                "description": "Desc",
+                "top_icon": '<svg width="100" height="100"><circle cx="50" cy="50" r="40"/></svg>',
+                "side_icon": '<svg width="100" height="100"><rect x="0" y="0" width="100" height="100"/></svg>',
+            }
+        ]
+
+        with patch("pathlib.Path.open", mock_open()) as mock_file:
+            generator.write_csv(rows, Path("test.csv"))
+            # CSV should write SVG as text
+            mock_file.assert_called_once()
+
+    @patch("openpyxl.drawing.image.Image")
+    @patch("openpyxl.Workbook")
+    @patch("generator.cairosvg.svg2png")
+    def test_write_excel_with_images(self, mock_svg2png, mock_workbook_class, mock_image_class):
+        """Test Excel writing with image embedding."""
+        # Sample SVG content
+        svg_content = '<svg width="100" height="100"><circle cx="50" cy="50" r="40"/></svg>'
+        mock_svg2png.return_value = b"fake_png_data"
+        
+        # Mock the Image class to return a mock image
+        mock_image = Mock()
+        mock_image.width = 50
+        mock_image.height = 50
+        mock_image_class.return_value = mock_image
+
+        rows = [
+            {
+                "name": "Test",
+                "description": "Desc",
+                "top_icon": svg_content,
+                "side_icon": svg_content,
+                "qr_svg": svg_content,
+                "label": svg_content,
+            }
+        ]
+
+        # Setup mocks
+        mock_ws = Mock()
+        mock_ws.cell.return_value = Mock(coordinate="A1")
+        mock_ws.row_dimensions = {i: self.MockDimension() for i in range(1, 10)}
+        mock_ws.column_dimensions = {chr(65+i): self.MockDimension() for i in range(10)}  # A-J
+        
+        mock_wb = Mock()
+        mock_wb.active = mock_ws
+        mock_workbook_class.return_value = mock_wb
+
+        generator.write_excel(rows, Path("test.xlsx"))
+
+        # Verify that svg2png was called for each image column
+        assert mock_svg2png.call_count == 4  # top_icon, side_icon, qr_svg, label
+        
+        # Verify that add_image was called for each image column
+        assert mock_ws.add_image.call_count == 4
+
+        # Verify workbook was saved
+        mock_wb.save.assert_called_once()
+
+    @patch("openpyxl.Workbook")
+    def test_write_excel_without_images(self, mock_workbook_class):
+        """Test Excel writing without image columns."""
+        rows = [
+            {
+                "name": "Test",
+                "description": "Desc",
+                "top_symbol": "hex",
+                "side_symbol": "washer",
+            }
+        ]
+
+        # Setup mocks
+        mock_ws = Mock()
+        mock_ws.row_dimensions = {i: self.MockDimension() for i in range(1, 10)}
+        mock_ws.column_dimensions = {chr(65+i): self.MockDimension() for i in range(10)}
+        
+        mock_wb = Mock()
+        mock_wb.active = mock_ws
+        mock_workbook_class.return_value = mock_wb
+
+        generator.write_excel(rows, Path("test.xlsx"))
+
+        # No images should be added
+        assert mock_ws.add_image.call_count == 0
+        
+        # Workbook should still be saved
+        mock_wb.save.assert_called_once()
+
+    @patch("openpyxl.Workbook")
+    @patch("generator.cairosvg.svg2png")
+    @patch("generator.warn")
+    def test_write_excel_image_embedding_fails_gracefully(self, mock_warn, mock_svg2png, mock_workbook_class):
+        """Test that Excel writing handles image embedding failures gracefully."""
+        mock_svg2png.side_effect = Exception("SVG conversion failed")
+
+        rows = [
+            {
+                "name": "Test",
+                "description": "Desc",
+                "top_icon": '<svg width="100" height="100"><circle cx="50" cy="50" r="40"/></svg>',
+            }
+        ]
+
+        # Setup mocks
+        mock_ws = Mock()
+        mock_ws.cell.return_value = Mock(coordinate="A1")
+        mock_ws.row_dimensions = {i: self.MockDimension() for i in range(1, 10)}
+        mock_ws.column_dimensions = {chr(65+i): self.MockDimension() for i in range(10)}
+        
+        mock_wb = Mock()
+        mock_wb.active = mock_ws
+        mock_workbook_class.return_value = mock_wb
+
+        generator.write_excel(rows, Path("test.xlsx"))
+
+        # Verify warning was logged
+        assert mock_warn.called
+        
+        # Workbook should still be saved despite failure
+        mock_wb.save.assert_called_once()
+
+    def test_write_spreadsheet_routes_to_csv(self):
+        """Test write_spreadsheet routing for CSV."""
+        rows = [{"name": "Test", "description": "Desc"}]
+
+        with patch("generator.write_csv") as mock_write_csv:
+            generator.write_spreadsheet(rows, Path("test.csv"))
+            mock_write_csv.assert_called_once()
+
+    @patch("generator.write_excel")
+    def test_write_spreadsheet_routes_to_excel(self, mock_write_excel):
+        """Test write_spreadsheet routing for Excel."""
+        rows = [{"name": "Test", "description": "Desc"}]
+
+        generator.write_spreadsheet(rows, Path("test.xlsx"))
+        mock_write_excel.assert_called_once()
