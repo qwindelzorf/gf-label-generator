@@ -191,6 +191,12 @@ REQUIRED_COLUMNS = ["name", "description"]
 OPTIONAL_COLUMNS = ["top_symbol", "side_symbol", "reorder_url", "short_url", "top_icon", "side_icon", "qr_svg", "label"]
 IMAGE_COLUMNS = ["top_icon", "side_icon", "qr_svg", "label"]
 
+# Excel image export settings
+EXCEL_ROW_HEIGHT_POINTS = 75  # Row height in points for image rows (~100 pixels)
+EXCEL_LABEL_IMAGE_WIDTH = 200  # Width in pixels for label images
+EXCEL_LABEL_IMAGE_HEIGHT = 50  # Height in pixels for label images
+EXCEL_ICON_IMAGE_SIZE = 50  # Size in pixels for icon and QR code images
+
 
 def parse_csv(csv_file: Path, delimiter: str = ",") -> list[dict[str, str]]:
     """Parse a CSV file and return a list of dictionaries representing each row."""
@@ -280,6 +286,7 @@ def write_excel(rows: list[dict[str, str]], output_file: Path) -> None:
         raise ValueError("No data to write")
 
     import openpyxl
+    # Import Image class locally as openpyxl is an optional dependency
     from openpyxl.drawing.image import Image
 
     wb = openpyxl.Workbook()
@@ -291,9 +298,6 @@ def write_excel(rows: list[dict[str, str]], output_file: Path) -> None:
 
     # Write headers
     ws.append(headers)
-
-    # Set row height for better image display (in points, ~100 pixels)
-    default_row_height = 75
 
     # Write data rows
     for row_idx, row in enumerate(rows, start=2):  # Start at 2 because row 1 is headers
@@ -313,12 +317,12 @@ def write_excel(rows: list[dict[str, str]], output_file: Path) -> None:
                     # Scale image to fit in cell (approximate cell width in pixels)
                     if header == "label":
                         # Labels are wider, scale appropriately
-                        img.width = 200
-                        img.height = 50
+                        img.width = EXCEL_LABEL_IMAGE_WIDTH
+                        img.height = EXCEL_LABEL_IMAGE_HEIGHT
                     else:
                         # Icons and QR codes are smaller
-                        img.width = 50
-                        img.height = 50
+                        img.width = EXCEL_ICON_IMAGE_SIZE
+                        img.height = EXCEL_ICON_IMAGE_SIZE
                     
                     # Add image to worksheet at the current cell
                     cell_address = ws.cell(row=row_idx, column=col_idx).coordinate
@@ -328,8 +332,8 @@ def write_excel(rows: list[dict[str, str]], output_file: Path) -> None:
                     row_values.append("")
                     
                     # Increase row height for this row to accommodate image
-                    if ws.row_dimensions[row_idx].height is None or ws.row_dimensions[row_idx].height < default_row_height:
-                        ws.row_dimensions[row_idx].height = default_row_height
+                    if ws.row_dimensions[row_idx].height is None or ws.row_dimensions[row_idx].height < EXCEL_ROW_HEIGHT_POINTS:
+                        ws.row_dimensions[row_idx].height = EXCEL_ROW_HEIGHT_POINTS
                 except Exception as e:
                     # If image embedding fails, fall back to text
                     warn(f"Failed to embed image for {header} in row {row_idx}: {e}")

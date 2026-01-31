@@ -733,6 +733,11 @@ class TestParsingFunctions:
 class TestWriteSpreadsheet:
     """Test spreadsheet writing functions."""
 
+    class MockDimension:
+        """Mock dimension object for Excel row/column dimensions."""
+        height = None
+        width = None
+
     def test_write_csv_basic(self):
         """Test basic CSV writing."""
         rows = [
@@ -794,14 +799,8 @@ class TestWriteSpreadsheet:
         # Setup mocks
         mock_ws = Mock()
         mock_ws.cell.return_value = Mock(coordinate="A1")
-        
-        # Mock row_dimensions to behave like a defaultdict
-        class MockDimension:
-            height = None
-            width = None
-        
-        mock_ws.row_dimensions = {i: MockDimension() for i in range(1, 10)}
-        mock_ws.column_dimensions = {chr(65+i): MockDimension() for i in range(10)}  # A-J
+        mock_ws.row_dimensions = {i: self.MockDimension() for i in range(1, 10)}
+        mock_ws.column_dimensions = {chr(65+i): self.MockDimension() for i in range(10)}  # A-J
         
         mock_wb = Mock()
         mock_wb.active = mock_ws
@@ -832,14 +831,8 @@ class TestWriteSpreadsheet:
 
         # Setup mocks
         mock_ws = Mock()
-        
-        # Mock dimension objects
-        class MockDimension:
-            height = None
-            width = None
-        
-        mock_ws.row_dimensions = {i: MockDimension() for i in range(1, 10)}
-        mock_ws.column_dimensions = {chr(65+i): MockDimension() for i in range(10)}
+        mock_ws.row_dimensions = {i: self.MockDimension() for i in range(1, 10)}
+        mock_ws.column_dimensions = {chr(65+i): self.MockDimension() for i in range(10)}
         
         mock_wb = Mock()
         mock_wb.active = mock_ws
@@ -871,14 +864,8 @@ class TestWriteSpreadsheet:
         # Setup mocks
         mock_ws = Mock()
         mock_ws.cell.return_value = Mock(coordinate="A1")
-        
-        # Mock dimension objects
-        class MockDimension:
-            height = None
-            width = None
-        
-        mock_ws.row_dimensions = {i: MockDimension() for i in range(1, 10)}
-        mock_ws.column_dimensions = {chr(65+i): MockDimension() for i in range(10)}
+        mock_ws.row_dimensions = {i: self.MockDimension() for i in range(1, 10)}
+        mock_ws.column_dimensions = {chr(65+i): self.MockDimension() for i in range(10)}
         
         mock_wb = Mock()
         mock_wb.active = mock_ws
